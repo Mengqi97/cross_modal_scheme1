@@ -1,6 +1,8 @@
 /data
 /models
 /test_fun
+/log
+/.ipynb_checkpoints
 /.vscode
 *.pyc
 /.idea
