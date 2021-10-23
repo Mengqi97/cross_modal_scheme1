@@ -49,7 +49,7 @@ class Config:
             'DT_1': {
                 'train': 'T1_clintox/clintox_train_data.csv',
                 'valid': 'T1_clintox/clintox_valid_data.csv',
-                'test_fun': 'T1_clintox/clintox_test_data.csv'
+                'test': 'T1_clintox/clintox_test_data.csv'
             },
         }
 
