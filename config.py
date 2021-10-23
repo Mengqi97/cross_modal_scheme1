@@ -39,9 +39,9 @@ class Config:
         self.warmup_proportion = 0
 
         # 目录
-        self.bert_dir = 'Models/PubMedBERT_abstract'
-        self.data_dir = 'Data/'
-        self.out_model_dir = 'Models/'
+        self.bert_dir = 'models/PubMedBERT_abstract'
+        self.data_dir = 'data/'
+        self.out_model_dir = 'models/'
         self.spe_file = 'SPE_ChEMBL.txt'
         self.spe_voc_file = 'spe_voc.txt'
         self.pre_train_corpus_file = 'pre_train/pre_train_corpus_small.csv'
