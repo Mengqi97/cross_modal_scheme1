@@ -1,5 +1,6 @@
 /data
 /models
+/test_fun
 /.vscode
 *.pyc
 /.idea
