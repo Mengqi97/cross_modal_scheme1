@@ -12,7 +12,7 @@ from transformers import BertForMaskedLM
 
 base_dir = os.path.dirname(__file__)
 str_time = time.strftime('[%Y-%m-%d]%H-%M')
-logger.add(os.path.join(base_dir, 'log', f'{str_time}.log'), encoding='utf-8')
+# logger.add(os.path.join(base_dir, 'log', f'{str_time}.log'), encoding='utf-8')
 
 
 
@@ -28,7 +28,7 @@ def train(_config):
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=_config.pre_train_batch_size,
                               sampler=RandomSampler(train_dataset),
-                              num_workers=1)
+                              num_workers=_config.num_workers)
     del train_dataset
 
     logger.info('**********2-1 模型初始化**********')
@@ -55,6 +55,15 @@ def train(_config):
     logger.info('**********4-1 初始化训练参数**********')
     global_step = 0
     # epoch_loss = []
+    logger.info('**********4-2 显示训练参数**********')
+    logger.info(f'********** 训练规模：{ _config.scale } **********')
+    for para_type, para_dict in _config.show_train_parameters().items():
+        logger.info(f'********** Parameters: {para_type} **********')
+        for para_name, para_value in para_dict.items():
+            logger.info('{:>30}:  {:>10}'.format(para_name, para_value))
+
+    for info_name, info_value in _config.show_train_info().items():
+        logger.info('{:>30}:  {:>10}'.format(info_name, info_value))
 
     logger.info('**********5-1 模型训练**********')
     for epoch in range(_config.pre_train_epochs):
@@ -85,7 +94,7 @@ def train(_config):
 
 
 if __name__ == '__main__':
-    config = Config('MLM')
+    config = Config('MLM', 'train', 'gpu-mid')
     train(config)
     logger.info('**********结束训练**********')
 
