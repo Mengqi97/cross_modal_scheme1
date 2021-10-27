@@ -2,11 +2,11 @@ import os
 import sys
 import collections
 import codecs
+from typing import List, Optional
 
 from config import Config
 
 import torch
-from typing import List, Optional
 from SmilesPE.tokenizer import SPE_Tokenizer
 from transformers import PreTrainedTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
