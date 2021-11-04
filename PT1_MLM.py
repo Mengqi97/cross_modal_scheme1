@@ -113,10 +113,10 @@ def train(_config: Config):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--task_type', dest='task_type', default='MLM', type=str, nargs='+')
-    parser.add_argument('-m', '--mode', dest='mode', default='train', type=str,  nargs='+' )
-    parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str, nargs='+')
-    parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default='0', type=int, nargs='+')
+    parser.add_argument('-t', '--task_type', dest='task_type', default='MLM', type=str)
+    parser.add_argument('-m', '--mode', dest='mode', default='train', type=str)
+    parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str)
+    parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default='0', type=int)
 
     task_type_list = ['MLM']
     mode_list = ['train', 'convert_data']
@@ -127,7 +127,9 @@ if __name__ == '__main__':
             args.mode in mode_list and \
             args.scale in scale_list:
         logger.info('********** 参数错误 **********')
-            
+
+    # logger.info(args.mode)
+    # logger.info(args.scale)   
 
     config = Config(
         task_type=args.task_type, 
