@@ -117,6 +117,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mode', dest='mode', default='train', type=str)
     parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str)
     parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default='0', type=int)
+    parser.add_argument('--num_workers', dest='num_workers', default='1', type=int)
 
     task_type_list = ['MLM']
     mode_list = ['train', 'convert_data']
@@ -135,7 +136,8 @@ if __name__ == '__main__':
         task_type=args.task_type, 
         mode=args.mode, 
         scale=args.scale,
-        use_pre_converted_data= False if 0 == args.use_pre_converted_data else True
+        use_pre_converted_data= False if 0 == args.use_pre_converted_data else True,
+        num_workers=args.num_workers
     )
     
     train(config)

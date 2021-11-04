@@ -3,7 +3,8 @@ class Config:
                  task_type,
                  mode,
                  scale, 
-                 use_pre_converted_data):
+                 use_pre_converted_data,
+                 num_workers):
         # 常量
         self.smi_token_id = 28895
         self.len_of_tokenizer = 28895 + 3117 + 1
@@ -11,10 +12,9 @@ class Config:
         # 训练规模
         self.scale = scale.lower()
         self.use_pre_converted_data = use_pre_converted_data
+        self.num_workers = num_workers
         if 'cpu_mini' == self.scale:
             self.gpu_ids = '-1'
-            
-            self.num_workers = 1
             
             self.pre_train_batch_size = 1
             self.pre_train_epochs = 1
@@ -26,8 +26,6 @@ class Config:
         elif 'gpu_mini' == self.scale:
             self.gpu_ids = '0'
             
-            self.num_workers = 4
-            
             self.pre_train_batch_size = 8
             self.pre_train_epochs = 30
             self.train_batch_size = 16
@@ -37,8 +35,6 @@ class Config:
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
         elif 'gpu_mid' == self.scale:
             self.gpu_ids = '0'
-
-            self.num_workers = 4
 
             self.pre_train_batch_size = 16
             self.pre_train_epochs = 50
