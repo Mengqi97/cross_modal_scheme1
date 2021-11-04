@@ -1,5 +1,8 @@
+from logging import log
 import os
+import pickle
 import time
+import argparse
 
 from config import Config
 from utils.data_handler import MLMUp, MLMDataset
@@ -16,11 +19,26 @@ str_time = time.strftime('[%Y-%m-%d]%H-%M')
 
 
 
-def train(_config):
+def train(_config: Config):
     logger.info('**********1-1 构建预训练数据集**********')
+    if _config.use_pre_converted_data:
+        logger.info('使用预处理好的数据')
+        with open(os.path.join(
+            base_dir,
+            _config.data_dir,
+            _config.converted_pre_train_courpus_path,
+        ), 'rb') as f:
+            train_dataset_up = pickle.load(f)
+    else:
+        logger.info('重新预处理数据')
+        train_dataset_up = MLMUp(data_path=os.path.join(base_dir, _config.data_dir, _config.pre_train_corpus_file_path),
+                _config=_config).convert_dataset()
+        if 'convert_data' == _config.mode:
+            logger.info('********** 预处理数据结束 **********')
+            return 
+
     train_dataset = MLMDataset(
-        MLMUp(data_path=os.path.join(base_dir, _config.data_dir, _config.pre_train_corpus_file),
-              _config=_config).convert_dataset(),
+        train_dataset_up,
         _config=_config,
     )
 
@@ -94,7 +112,30 @@ def train(_config):
 
 
 if __name__ == '__main__':
-    config = Config('MLM', 'train', 'gpu-mid')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--task_type', dest='task_type', default='MLM', type=str, nargs='+')
+    parser.add_argument('-m', '--mode', dest='mode', default='train', type=str,  nargs='+' )
+    parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str, nargs='+')
+    parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default='0', type=int, nargs='+')
+
+    task_type_list = ['MLM']
+    mode_list = ['train', 'convert_data']
+    scale_list = ['cpu_mini', 'gpu_mini', 'gpu_mid']
+
+    args = parser.parse_args()
+    if not args.task_type in task_type_list and \
+            args.mode in mode_list and \
+            args.scale in scale_list:
+        logger.info('********** 参数错误 **********')
+            
+
+    config = Config(
+        task_type=args.task_type, 
+        mode=args.mode, 
+        scale=args.scale,
+        use_pre_converted_data= False if 0 == args.use_pre_converted_data else True
+    )
+    
     train(config)
     logger.info('**********结束训练**********')
 

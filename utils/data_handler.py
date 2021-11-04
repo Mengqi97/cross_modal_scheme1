@@ -1,6 +1,7 @@
 import os
 import sys
 import random
+import pickle
 
 from config import Config
 from utils.functions import SMILES_SPE_Tokenizer
@@ -51,6 +52,14 @@ class MLMUp(BaseUp):
         self.mlm_prob = _config.mlm_prob
         self.drug_name_replace_prob = _config.drug_name_replace_prob
         self.smi_token_id = _config.smi_token_id
+        if 'convert_data' == _config.mode:
+            self.save_converted_dataset_path = os.path.join(
+                base_dir,
+                _config.data_dir,
+                _config.converted_pre_train_courpus_path,
+            )
+        else:
+            self.save_converted_dataset_path = ''
 
     @staticmethod
     def convert_data(series: pd.Series, self):
@@ -134,14 +143,22 @@ class MLMUp(BaseUp):
         tmp_tokenized_tensor = torch.cat((cls_token_tensor, tmp_tokenized_tensor, sep_token_tensor), dim=1)
         tmp_tokenized_mlm_tensor = torch.cat((cls_token_tensor, tmp_tokenized_mlm_tensor, sep_token_tensor), dim=1)
 
-        return {
+        converted_dataset =  {
             'input_ids': tmp_tokenized_mlm_tensor,
             'token_type_ids': torch.zeros_like(tmp_tokenized_mlm_tensor, dtype=torch.long),
             'attention_mask': torch.ones_like(tmp_tokenized_mlm_tensor, dtype=torch.float),
             'labels': tmp_tokenized_tensor,
         }
 
+        if self.save_converted_dataset_path:
+            with open(self.save_converted_dataset_path, 'wb') as f:
+                pickle.dump(converted_dataset, f, pickle.HIGHEST_PROTOCOL)
+            
+            return ''
+        else:
+            return converted_dataset
 
+        
 class ClintoxUp(BaseUp):
     """
 
