@@ -15,8 +15,9 @@ from transformers import BertForMaskedLM
 
 base_dir = os.path.dirname(__file__)
 str_time = time.strftime('[%Y-%m-%d]%H-%M')
-# logger.add(os.path.join(base_dir, 'log', f'{str_time}.log'), encoding='utf-8')
 
+
+# logger.add(os.path.join(base_dir, 'log', f'{str_time}.log'), encoding='utf-8')
 
 
 def train(_config: Config):
@@ -24,18 +25,18 @@ def train(_config: Config):
     if _config.use_pre_converted_data:
         logger.info('使用预处理好的数据')
         with open(os.path.join(
-            base_dir,
-            _config.data_dir,
-            _config.converted_pre_train_courpus_path,
+                base_dir,
+                _config.data_dir,
+                _config.converted_pre_train_courpus_path,
         ), 'rb') as f:
             train_dataset_up = pickle.load(f)
     else:
         logger.info('重新预处理数据')
         train_dataset_up = MLMUp(data_path=os.path.join(base_dir, _config.data_dir, _config.pre_train_corpus_file_path),
-                _config=_config).convert_dataset()
+                                 _config=_config).convert_dataset()
         if 'convert_data' == _config.mode:
             logger.info('********** 预处理数据结束 **********')
-            return 
+            return
 
     train_dataset = MLMDataset(
         train_dataset_up,
@@ -74,7 +75,7 @@ def train(_config: Config):
     global_step = 0
     # epoch_loss = []
     logger.info('**********4-2 显示训练参数**********')
-    logger.info(f'********** 训练规模：{ _config.scale } **********')
+    logger.info(f'********** 训练规模：{_config.scale} **********')
     for para_type, para_dict in _config.show_train_parameters().items():
         logger.info(f'********** Parameters: {para_type} **********')
         for para_name, para_value in para_dict.items():
@@ -133,13 +134,12 @@ if __name__ == '__main__':
     # logger.info(args.scale)   
 
     config = Config(
-        task_type=args.task_type, 
-        mode=args.mode, 
+        task_type=args.task_type,
+        mode=args.mode,
         scale=args.scale,
-        use_pre_converted_data= False if 0 == args.use_pre_converted_data else True,
+        use_pre_converted_data=False if 0 == args.use_pre_converted_data else True,
         num_workers=args.num_workers
     )
-    
+
     train(config)
     logger.info('**********结束训练**********')
-
