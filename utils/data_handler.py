@@ -116,8 +116,8 @@ class MLMUp(BaseUp):
           :obj:`Dict`: 字典Key的描述
         """
         tmp_data = pd.DataFrame()
-        tqdm.pandas(desc='Tokenize&随机掩模中。。。。')
-        tmp_data[['tokenized', 'tokenized_mlm']] = self.data.progress_apply(self.convert_data, axis=1, args=(self,),
+        # tqdm.pandas(desc='Tokenize&随机掩模中。。。。')
+        tmp_data[['tokenized', 'tokenized_mlm']] = self.data.apply(self.convert_data, axis=1, args=(self,),
                                                                             result_type='expand')
         tmp_tokenized_list = tmp_data['tokenized'].tolist()
         tmp_tokenized_mlm_list = tmp_data['tokenized_mlm'].tolist()
