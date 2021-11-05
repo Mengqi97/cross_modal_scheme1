@@ -1,8 +1,8 @@
-from logging import log
 import os
 import pickle
 import time
 import argparse
+import sys
 
 from config import Config
 from utils.data_handler import MLMUp, MLMDataset
@@ -125,11 +125,11 @@ if __name__ == '__main__':
     scale_list = ['cpu_mini', 'gpu_mini', 'gpu_mid']
 
     args = parser.parse_args()
-    if not args.task_type in task_type_list and \
-            args.mode in mode_list and \
-            args.scale in scale_list:
+    if args.task_type not in task_type_list or \
+            args.mode not in mode_list or \
+            args.scale not in scale_list:
         logger.info('********** 参数错误 **********')
-
+        sys.exit()
     # logger.info(args.mode)
     # logger.info(args.scale)   
 
