@@ -68,11 +68,13 @@ def train(_config: Config):
 
     logger.info('**********3-2 优化器**********')
     # 计算训练的总次数
-    total_train_items = _config.pre_train_epochs * len(train_loader)
+    per_epoch_items = len(train_loader)
+    total_train_items = _config.pre_train_epochs * per_epoch_items
     optimizer, scheduler = build_optimizer_and_scheduler(_config, model, total_train_items)
 
     logger.info('**********4-1 初始化训练参数**********')
     global_step = 0
+    items_show_results = per_epoch_items // _config.one_epoch_show_results_times
     # epoch_loss = []
     logger.info('**********4-2 显示训练参数**********')
     logger.info(f'********** 训练规模：{_config.scale} **********')
@@ -83,6 +85,11 @@ def train(_config: Config):
 
     for info_name, info_value in _config.show_train_info().items():
         logger.info('{:>30}:  {:>10}'.format(info_name, info_value))
+
+    logger.info(f'********** Parameters: scale **********')
+    logger.info('{:>30}:  {:>10}'.format('per_epoch_items', per_epoch_items))
+    logger.info('{:>30}:  {:>10}'.format('total_train_items', total_train_items))
+    logger.info('{:>30}:  {:>10}'.format('items_show_results', items_show_results))
 
     logger.info('**********5-1 模型训练**********')
     for epoch in range(_config.pre_train_epochs):
@@ -101,15 +108,18 @@ def train(_config: Config):
 
             # 测试用
             if 'cpu-mini' == _config.scale:
-                if global_step % 5:
+                if not global_step % 5:
                     break
+
+            if not step % items_show_results:
+                logger.info('Step: {:>10} ---------- Loss: {:>20.15f}'.format(step, loss.cpu().detach().numpy().tolist()))
 
         scheduler.step()
         # epoch_loss.append([loss.cpu().detach().numpy().tolist()])
         logger.info('Epoch: {:>5} ---------- Loss: {:>20.15f}'.format(epoch, loss.cpu().detach().numpy().tolist()))
 
-    logger.info('**********6-1 模型保存**********')
-    save_model(_config, model)
+        logger.info('**********6-1 模型保存**********')
+        save_model(_config, model)
 
 
 if __name__ == '__main__':

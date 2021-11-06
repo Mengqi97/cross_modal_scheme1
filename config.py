@@ -20,6 +20,7 @@ class Config:
             self.pre_train_epochs = 1
             self.train_batch_size = 8
             self.train_epochs = 10
+            self.one_epoch_show_results_times = 2
 
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
 
@@ -30,7 +31,7 @@ class Config:
             self.pre_train_epochs = 30
             self.train_batch_size = 16
             self.train_epochs = 40
-
+            self.one_epoch_show_results_times = 2
 
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
         elif 'gpu_mid' == self.scale:
@@ -40,6 +41,8 @@ class Config:
             self.pre_train_epochs = 50
             self.train_batch_size = 16
             self.train_epochs = 40
+            self.one_epoch_show_results_times = 100
+
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_big.csv'
 
 
