@@ -1,48 +1,49 @@
 class Config:
     def __init__(self,
                  task_type,
-                 mode='train',
-                 scale='cpu-mini'):
+                 mode,
+                 scale, 
+                 use_pre_converted_data,
+                 num_workers):
         # 常量
         self.smi_token_id = 28895
         self.len_of_tokenizer = 28895 + 3117 + 1
 
         # 训练规模
         self.scale = scale.lower()
-        if 'cpu-mini' == self.scale:
+        self.use_pre_converted_data = use_pre_converted_data
+        self.num_workers = num_workers
+        if 'cpu_mini' == self.scale:
             self.gpu_ids = '-1'
-            
-            self.num_workers = 1
             
             self.pre_train_batch_size = 1
             self.pre_train_epochs = 1
             self.train_batch_size = 8
             self.train_epochs = 10
+            self.one_epoch_show_results_times = 2
 
-            self.pre_train_corpus_file = 'pre_train/pre_train_corpus_small.csv'
+            self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
 
-        elif 'gpu-mini' == self.scale:
+        elif 'gpu_mini' == self.scale:
             self.gpu_ids = '0'
-            
-            self.num_workers = 4
             
             self.pre_train_batch_size = 8
             self.pre_train_epochs = 30
             self.train_batch_size = 16
             self.train_epochs = 40
+            self.one_epoch_show_results_times = 2
 
-
-            self.pre_train_corpus_file = 'pre_train/pre_train_corpus_small.csv'
-        elif 'gpu-mid' == self.scale:
+            self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
+        elif 'gpu_mid' == self.scale:
             self.gpu_ids = '0'
 
-            self.num_workers = 4
-
-            self.pre_train_batch_size = 16
+            self.pre_train_batch_size = 8
             self.pre_train_epochs = 50
             self.train_batch_size = 16
             self.train_epochs = 40
-            self.pre_train_corpus_file = 'pre_train/pre_train_corpus_big.csv'
+            self.one_epoch_show_results_times = 100
+
+            self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_big.csv'
 
 
         # 训练参数
@@ -67,6 +68,7 @@ class Config:
         self.out_model_dir = 'models/'
         self.spe_file = 'SPE_ChEMBL.txt'
         self.spe_voc_file = 'spe_voc.txt'
+        self.converted_pre_train_courpus_path = 'pre_train/converted_pre_train_corpus.pkl'
         
         self.downstream_tasks_corpus_file = {
             'DT_1': {
@@ -75,6 +77,7 @@ class Config:
                 'test': 'T1_clintox/clintox_test_data.csv'
             },
         }
+
 
         # 类型选择
         self.tokenizer_txt_type = 'default'
@@ -112,6 +115,6 @@ class Config:
         return {
             'pre_train_batch_size' : self.pre_train_batch_size,
             'pre_train_epochs' : self.pre_train_epochs,
-            'pre_train_corpus_file' : self.pre_train_corpus_file,
+            'pre_train_corpus_file_path' : self.pre_train_corpus_file_path,
             'bert_name' : self.bert_name,
         }
