@@ -38,7 +38,7 @@ class Config:
             self.gpu_ids = '0'
 
             self.pre_train_batch_size = 8
-            self.pre_train_epochs = 50
+            self.pre_train_epochs = 20
             self.train_batch_size = 16
             self.train_epochs = 40
             self.one_epoch_show_results_times = 100
