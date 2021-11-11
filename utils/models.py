@@ -3,6 +3,8 @@ import sys
 
 import torch.nn as nn
 from transformers import BertModel
+from loguru import logger
+
 
 base_dir = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(base_dir)
@@ -78,6 +80,7 @@ class ClintoxModel(BaseModel):
 
         if self.criterion:
             loss = self.criterion(out, labels)
+
             return out, loss
 
         return out

@@ -71,7 +71,7 @@ class Config:
         self.converted_pre_train_courpus_path = 'pre_train/converted_pre_train_corpus.pkl'
         
         self.downstream_tasks_corpus_file = {
-            'DT_1': {
+            'DT1': {
                 'train': 'T1_clintox/clintox_train_data.csv',
                 'valid': 'T1_clintox/clintox_valid_data.csv',
                 'test': 'T1_clintox/clintox_test_data.csv'
