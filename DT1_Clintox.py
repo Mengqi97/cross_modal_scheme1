@@ -102,7 +102,7 @@ def train(_config: Config):
 
         scheduler.step()
         logger.info('Epoch: {:>5} ---------- Loss: {:>20.15f}'.format(epoch, loss.cpu().detach().numpy().tolist()))
-        logger.info('Epoch: {:>5} ---------- Accuracy: {:>20.15f}'.format(validator(model)))
+        logger.info('Epoch: {:>5} ---------- Accuracy: {:>20.15f}'.format(epoch,validator(model)))
 
 
 if __name__ == '__main__':
