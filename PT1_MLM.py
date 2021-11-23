@@ -4,6 +4,8 @@ import time
 import argparse
 import sys
 
+from torch.cuda.memory import empty_cache
+
 from config import Config
 from utils.data_handler import MLMUp, MLMDataset
 from utils.functions import load_model_and_parallel, build_optimizer_and_scheduler, save_model
@@ -120,6 +122,8 @@ def train(_config: Config):
 
         logger.info('**********6-1 模型保存**********')
         save_model(_config, model)
+    empty_cache()
+    logger.info('**********7 训练结束**********')
 
 
 if __name__ == '__main__':
@@ -150,6 +154,10 @@ if __name__ == '__main__':
         use_pre_converted_data=False if 0 == args.use_pre_converted_data else True,
         num_workers=args.num_workers
     )
-
+    import torch
+    
+    os.system("nvidia-smi")
+    logger.info(torch.cuda.device_count())
+    logger.info(torch.cuda.current_device())
     train(config)
     logger.info('**********结束训练**********')
