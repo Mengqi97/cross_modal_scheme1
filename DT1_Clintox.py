@@ -16,7 +16,6 @@ from torch.cuda import get_device_name
 base_dir = os.path.dirname(__file__)
 str_time = time.strftime('[%Y-%m-%d]%H-%M')
 
-
 # logger.add(os.path.join(base_dir, 'log', f'{str_time}.log'), encoding='utf-8')
 
 

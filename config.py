@@ -49,7 +49,9 @@ class Config:
         # 训练参数
         self.max_seq_len = 512
 
-        self.mlm_prob = 0.3
+        self.mlm_prob = 0.15
+        self.mlm_replace_mask_prob = 0.8
+        self.mlm_replace_random_prob = 0.1
         self.drug_name_replace_prob = 0.6
 
         self.mid_linear_dims = 128

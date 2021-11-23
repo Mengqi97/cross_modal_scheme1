@@ -17,12 +17,15 @@ from icecream import ic
 base_dir = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(base_dir)
 
+random.seed(70627)
+
 
 class BaseUp:
     def __init__(self,
                  data_path,
                  _config: Config):
-
+        
+        self.len_of_tokenizer = _config.len_of_tokenizer
         self.max_seq_len = _config.max_seq_len
         self.mode = _config.mode
         self.data = pd.read_csv(data_path)
@@ -32,6 +35,7 @@ class BaseUp:
                 self.tokenizer_txt = BertTokenizer.from_pretrained(os.path.join(base_dir, _config.bert_dir))
             else:
                 self.tokenizer_txt = BertTokenizer.from_pretrained(_config.bert_name)
+
             self.tokenizer_txt.add_tokens(['[SMI]'])
         if 'default' == _config.tokenizer_smi_type:
             self.tokenizer_smi = SMILES_SPE_Tokenizer(
@@ -50,6 +54,8 @@ class MLMUp(BaseUp):
         )
 
         self.mlm_prob = _config.mlm_prob
+        self.mlm_replace_mask_prob = _config.mlm_replace_mask_prob
+        self.mlm_replace_random_prob = _config.mlm_replace_random_prob
         self.drug_name_replace_prob = _config.drug_name_replace_prob
         self.smi_token_id = _config.smi_token_id
         if 'convert_data' == _config.mode:
@@ -60,6 +66,8 @@ class MLMUp(BaseUp):
             )
         else:
             self.save_converted_dataset_path = ''
+        
+        del _config
 
     @staticmethod
     def convert_data(series: pd.Series, self):
@@ -76,6 +84,9 @@ class MLMUp(BaseUp):
             MLM任务的输入id序列，未对齐
         """
         mlm_prob = self.mlm_prob
+        mlm_replace_mask_prob = self.mlm_replace_mask_prob
+        mlm_replace_random_prob = self.mlm_replace_mask_prob + self.mlm_replace_random_prob
+        len_of_tokenizer = self.len_of_tokenizer
         smi_token_id = self.smi_token_id
         mask_token_id = self.tokenizer_txt.mask_token_id
 
@@ -94,13 +105,26 @@ class MLMUp(BaseUp):
         for token_id in abstract_tokenized:
             if token_id == smi_token_id:
                 for smi_id in smi_tokenized:
-                    if random.random() < mlm_prob:
-                        tokenized_mlm.append(mask_token_id)
+                    if random.random() <= mlm_prob:
+                        tmp_replace_prob = random.random()
+                        if tmp_replace_prob <= mlm_replace_mask_prob:
+                            tokenized_mlm.append(mask_token_id)
+                        elif tmp_replace_prob <= mlm_replace_random_prob:
+                            tokenized_mlm.append(random.randint(0, len_of_tokenizer-1))
+                        else:
+                            tokenized_mlm.append(smi_id)
                     else:
                         tokenized_mlm.append(smi_id)
                     tokenized.append(smi_id)
-            if random.random() < mlm_prob:
-                tokenized_mlm.append(mask_token_id)
+                continue
+            if random.random() <= mlm_prob:
+                tmp_replace_prob = random.random()
+                if tmp_replace_prob <= mlm_replace_mask_prob:
+                    tokenized_mlm.append(mask_token_id)
+                elif tmp_replace_prob <= mlm_replace_random_prob:
+                    tokenized_mlm.append(random.randint(0, len_of_tokenizer-1))
+                else:
+                    tokenized_mlm.append(token_id)
             else:
                 tokenized_mlm.append(token_id)
             tokenized.append(token_id)
