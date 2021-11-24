@@ -70,7 +70,7 @@ class Config:
         self.out_model_dir = 'models/'
         self.spe_file = 'SPE_ChEMBL.txt'
         self.spe_voc_file = 'spe_voc.txt'
-        self.converted_pre_train_courpus_path = 'pre_train/converted_pre_train_corpus.pkl'
+        self.converted_pre_train_courpus_path = 'pre_train/converted_pre_train_corpus_bert_raw.pkl'
         
         self.downstream_tasks_corpus_file = {
             'DT1': {
