@@ -2,6 +2,7 @@ import os
 import sys
 import random
 import pickle
+import json
 
 from config import Config
 from utils.functions import SMILES_SPE_Tokenizer
@@ -12,8 +13,10 @@ import pandas as pd
 from transformers import BertTokenizer
 from tqdm import tqdm
 from icecream import ic
+from pandarallel import pandarallel
+from loguru import logger
 
-
+pandarallel.initialize()
 base_dir = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(base_dir)
 
@@ -24,7 +27,9 @@ class BaseUp:
     def __init__(self,
                  data_path,
                  _config: Config):
-        
+
+        self.data_dir = _config.data_dir
+        self.scale = _config.scale
         self.len_of_tokenizer = _config.len_of_tokenizer
         self.max_seq_len = _config.max_seq_len
         self.mode = _config.mode
@@ -181,6 +186,36 @@ class MLMUp(BaseUp):
             return ''
         else:
             return converted_dataset
+
+    @staticmethod
+    def item_tokenize(series: pd.Series, self):
+        drug_name = series['DRUG_NAME'].lower()
+        abstract = series['ABSTRACTS'].lower()
+        smi_tokenized = self.tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
+
+        # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
+        if random.random() < self.drug_name_replace_prob:
+            abstract = abstract.replace(drug_name, '[SMI]')
+        abstract_tokenized = self.tokenizer_txt.encode(abstract, add_special_tokens=False)
+
+        return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
+
+    def tokenize_data(self):
+        tokenized_data = pd.DataFrame()
+        logger.info('-- begin --')
+        tokenized_data[['tokenized_smi', 'tokenized_txt']] = self.data.parallel_apply(self.item_tokenize,
+                                                                                      axis=1,
+                                                                                      args=(self,),
+                                                                                      results_type='expand')
+        logger.info('-- end --')
+        save_path = os.path.join(base_dir, self.data_dir, 'preprocess')
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        tokenized_data.to_csv(os.path.join(
+            save_path,
+            f'tokenized_data_{self.scale}_{self.drug_name_replace_prob}.csv',
+        ), index=False)
+
 
         
 class ClintoxUp(BaseUp):

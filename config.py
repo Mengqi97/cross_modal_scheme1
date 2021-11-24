@@ -5,7 +5,8 @@ class Config:
                  scale, 
                  use_pre_converted_data,
                  num_workers,
-                 gpu_nums):
+                 gpu_nums,
+                 drug_name_replace_prob=0.6):
         # 常量
         self.smi_token_id = 28895
         self.len_of_tokenizer = 28895 + 3117 + 1
@@ -64,7 +65,7 @@ class Config:
         self.mlm_prob = 0.15
         self.mlm_replace_mask_prob = 0.8
         self.mlm_replace_random_prob = 0.1
-        self.drug_name_replace_prob = 0.6
+        self.drug_name_replace_prob = drug_name_replace_prob
 
         self.mid_linear_dims = 128
         self.dropout_prob = 0.1
