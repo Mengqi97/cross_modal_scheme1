@@ -16,11 +16,14 @@ from icecream import ic
 from pandarallel import pandarallel
 from loguru import logger
 
-pandarallel.initialize()
 base_dir = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(base_dir)
 
 random.seed(70627)
+
+tokenizer_smi = None
+tokenizer_txt = None
+drug_name_replace_prob = None
 
 
 class BaseUp:
@@ -71,7 +74,7 @@ class MLMUp(BaseUp):
             )
         else:
             self.save_converted_dataset_path = ''
-        
+
         del _config
 
     @staticmethod
@@ -115,7 +118,7 @@ class MLMUp(BaseUp):
                         if tmp_replace_prob <= mlm_replace_mask_prob:
                             tokenized_mlm.append(mask_token_id)
                         elif tmp_replace_prob <= mlm_replace_random_prob:
-                            tokenized_mlm.append(random.randint(0, len_of_tokenizer-1))
+                            tokenized_mlm.append(random.randint(0, len_of_tokenizer - 1))
                         else:
                             tokenized_mlm.append(smi_id)
                     else:
@@ -127,7 +130,7 @@ class MLMUp(BaseUp):
                 if tmp_replace_prob <= mlm_replace_mask_prob:
                     tokenized_mlm.append(mask_token_id)
                 elif tmp_replace_prob <= mlm_replace_random_prob:
-                    tokenized_mlm.append(random.randint(0, len_of_tokenizer-1))
+                    tokenized_mlm.append(random.randint(0, len_of_tokenizer - 1))
                 else:
                     tokenized_mlm.append(token_id)
             else:
@@ -147,7 +150,7 @@ class MLMUp(BaseUp):
         tmp_data = pd.DataFrame()
         # tqdm.pandas(desc='Tokenize&随机掩模中。。。。')
         tmp_data[['tokenized', 'tokenized_mlm']] = self.data.apply(self.convert_data, axis=1, args=(self,),
-                                                                            result_type='expand')
+                                                                   result_type='expand')
         tmp_tokenized_list = tmp_data['tokenized'].tolist()
         tmp_tokenized_mlm_list = tmp_data['tokenized_mlm'].tolist()
         del tmp_data
@@ -172,7 +175,7 @@ class MLMUp(BaseUp):
         tmp_tokenized_tensor = torch.cat((cls_token_tensor, tmp_tokenized_tensor, sep_token_tensor), dim=1)
         tmp_tokenized_mlm_tensor = torch.cat((cls_token_tensor, tmp_tokenized_mlm_tensor, sep_token_tensor), dim=1)
 
-        converted_dataset =  {
+        converted_dataset = {
             'input_ids': tmp_tokenized_mlm_tensor,
             'token_type_ids': torch.zeros_like(tmp_tokenized_mlm_tensor, dtype=torch.long),
             'attention_mask': torch.ones_like(tmp_tokenized_mlm_tensor, dtype=torch.float),
@@ -182,31 +185,44 @@ class MLMUp(BaseUp):
         if self.save_converted_dataset_path:
             with open(self.save_converted_dataset_path, 'wb') as f:
                 pickle.dump(converted_dataset, f, pickle.HIGHEST_PROTOCOL)
-            
+
             return ''
         else:
             return converted_dataset
 
     @staticmethod
-    def item_tokenize(series: pd.Series, self):
+    def item_tokenize(series: pd.Series):
+        global tokenizer_smi
+        global tokenizer_txt
+        global drug_name_replace_prob
         drug_name = series['DRUG_NAME'].lower()
         abstract = series['ABSTRACTS'].lower()
-        smi_tokenized = self.tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
+        smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
 
         # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
-        if random.random() < self.drug_name_replace_prob:
+        if random.random() < drug_name_replace_prob:
             abstract = abstract.replace(drug_name, '[SMI]')
-        abstract_tokenized = self.tokenizer_txt.encode(abstract, add_special_tokens=False)
+        abstract_tokenized = tokenizer_txt.encode(abstract, add_special_tokens=False)
 
         return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
+        # return 1, 2
 
     def tokenize_data(self):
         tokenized_data = pd.DataFrame()
         logger.info('-- begin --')
+        pandarallel.initialize()
+        global tokenizer_smi
+        global tokenizer_txt
+        global drug_name_replace_prob
+        tokenizer_smi = self.tokenizer_smi
+        tokenizer_txt = self.tokenizer_txt
+        drug_name_replace_prob = self.drug_name_replace_prob
         tokenized_data[['tokenized_smi', 'tokenized_txt']] = self.data.parallel_apply(self.item_tokenize,
                                                                                       axis=1,
-                                                                                      args=(self,),
-                                                                                      results_type='expand')
+                                                                                      result_type='expand')
+        tokenizer_smi = None
+        tokenizer_txt = None
+        drug_name_replace_prob = None
         logger.info('-- end --')
         save_path = os.path.join(base_dir, self.data_dir, 'preprocess')
         if not os.path.exists(save_path):
@@ -217,7 +233,6 @@ class MLMUp(BaseUp):
         ), index=False)
 
 
-        
 class ClintoxUp(BaseUp):
     """
 
@@ -335,7 +350,8 @@ if __name__ == '__main__':
 
     # 测试ClintoxUp函数
     config = Config('DT_1', 'train')
-    data_up = ClintoxUp(os.path.join(base_dir, config.data_dir, config.downstream_tasks_corpus_file['DT_1']['test']), config)
+    data_up = ClintoxUp(os.path.join(base_dir, config.data_dir, config.downstream_tasks_corpus_file['DT_1']['test']),
+                        config)
     dataset = data_up.convert_dataset()
     ic(dataset['input_ids'].shape)
     ic(dataset['labels'].shape)
@@ -344,7 +360,5 @@ if __name__ == '__main__':
     # 测试MLMDataset类
     mlmdataset = MLMDataset(dataset, config)
     for data in mlmdataset:
-      ic(data)
-      break
-
-
+        ic(data)
+        break
