@@ -59,6 +59,10 @@ def train(_config: Config):
         model = BertForMaskedLM.from_pretrained(_config.bert_name)
     model.resize_token_embeddings(_config.len_of_tokenizer)
     model, device = load_model_and_parallel(model, _config.gpu_ids)
+    # 判断是否进行多gpu训练，进过DataParallel后，模型会添加module属性，用以调用自定义方法
+    use_n_gpus = False
+    if hasattr(model, 'module'):
+        use_n_gpus = True
 
     try:
         logger.info(get_device_name(device))
@@ -100,11 +104,18 @@ def train(_config: Config):
             for key in batch_data.keys():
                 batch_data[key] = batch_data[key].to(device)
             outputs = model(**batch_data)
-            loss = outputs.loss
 
-            optimizer.zero_grad()
+            model.zero_grad()
+
+            if use_n_gpus:
+                loss = outputs.loss.mean()
+            else:
+                loss = outputs.loss
+
+            # optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            scheduler.step()
 
             global_step += 1
 
@@ -114,9 +125,9 @@ def train(_config: Config):
                     break
 
             if not step % items_show_results:
-                logger.info('Step: {:>10} ---------- Loss: {:>20.15f}'.format(step, loss.cpu().detach().numpy().tolist()))
+                logger.info(
+                    'Step: {:>10} ---------- Loss: {:>20.15f}'.format(step, loss.cpu().detach().numpy().tolist()))
 
-        scheduler.step()
         # epoch_loss.append([loss.cpu().detach().numpy().tolist()])
         logger.info('Epoch: {:>5} ---------- Loss: {:>20.15f}'.format(epoch, loss.cpu().detach().numpy().tolist()))
 
@@ -133,10 +144,11 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str)
     parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default='0', type=int)
     parser.add_argument('--num_workers', dest='num_workers', default='1', type=int)
+    parser.add_argument('--gpu_nums', dest='gpu_nums', default='1', type=int)
 
     task_type_list = ['MLM']
     mode_list = ['train', 'convert_data']
-    scale_list = ['cpu_mini', 'gpu_mini', 'gpu_mid']
+    scale_list = ['cpu_mini', 'gpu_mini', 'gpu_mid', 'gpu_mul']
 
     args = parser.parse_args()
     if args.task_type not in task_type_list or \
@@ -152,10 +164,11 @@ if __name__ == '__main__':
         mode=args.mode,
         scale=args.scale,
         use_pre_converted_data=False if 0 == args.use_pre_converted_data else True,
-        num_workers=args.num_workers
+        num_workers=args.num_workers,
+        gpu_nums=args.gpu_nums,
     )
     import torch
-    
+
     os.system("nvidia-smi")
     logger.info(torch.cuda.device_count())
     logger.info(torch.cuda.current_device())

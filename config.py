@@ -4,7 +4,8 @@ class Config:
                  mode,
                  scale, 
                  use_pre_converted_data,
-                 num_workers):
+                 num_workers,
+                 gpu_nums):
         # 常量
         self.smi_token_id = 28895
         self.len_of_tokenizer = 28895 + 3117 + 1
@@ -38,6 +39,17 @@ class Config:
             self.gpu_ids = '0'
 
             self.pre_train_batch_size = 8
+            self.pre_train_epochs = 10
+            self.train_batch_size = 16
+            self.train_epochs = 40
+            self.one_epoch_show_results_times = 100
+
+            self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_big.csv'
+
+        elif 'gpu_mul' == self.scale:
+            self.gpu_ids = ','.join([str(i) for i in range(gpu_nums)])
+
+            self.pre_train_batch_size = 8 * gpu_nums
             self.pre_train_epochs = 20
             self.train_batch_size = 16
             self.train_epochs = 40

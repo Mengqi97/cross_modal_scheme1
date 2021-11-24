@@ -111,6 +111,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str)
     parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default='0', type=int)
     parser.add_argument('--num_workers', dest='num_workers', default='1', type=int)
+    parser.add_argument('--gpu_nums', dest='gpu_nums', default='1', type=int)
 
     args = parser.parse_args()
 
@@ -119,7 +120,8 @@ if __name__ == '__main__':
         mode=args.mode,
         scale=args.scale,
         use_pre_converted_data=False if 0 == args.use_pre_converted_data else True,
-        num_workers=args.num_workers
+        num_workers=args.num_workers,
+        gpu_nums=args.gpu_nums,
     )
 
     train(config)
