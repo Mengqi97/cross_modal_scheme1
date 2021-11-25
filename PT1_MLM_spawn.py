@@ -10,6 +10,7 @@ from config import Config
 from utils.data_handler import MLMUp, MLMDataset
 from utils.functions import load_model_and_parallel_ddp, build_optimizer_and_scheduler, save_model_ddp, setup, cleanup
 
+import torch
 from loguru import logger
 from torch.utils.data import DataLoader, BatchSampler
 from torch.utils.data.distributed import DistributedSampler
@@ -181,7 +182,6 @@ if __name__ == '__main__':
         gpu_nums=args.word_size,
         dist_url=args.dist_url,
     )
-    import torch
 
     logger.info(os.system("nvidia-smi"))
     # logger.info(torch.cuda.device_count())

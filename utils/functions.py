@@ -413,7 +413,7 @@ def save_model_ddp(_config: Config, model, global_step=-1):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
-    save_model_path = os.path.join(output_dir, 'model.pt')
+    save_model_path = os.path.join(output_dir, 'model_bbp.pt')
     torch.save(model.state_dict(), save_model_path)
 
     dist.barrier()

@@ -56,7 +56,7 @@ class Config:
             self.dist_url = dist_url
 
             self.pin_memory = True
-            self.pre_train_batch_size = 8 * gpu_nums
+            self.pre_train_batch_size = 4 * gpu_nums
             self.pre_train_epochs = 20
             self.train_batch_size = 16
             self.train_epochs = 40
