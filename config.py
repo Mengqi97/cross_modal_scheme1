@@ -6,6 +6,7 @@ class Config:
                  use_pre_converted_data,
                  num_workers,
                  gpu_nums,
+                 dist_url,
                  drug_name_replace_prob=0.6):
         # 常量
         self.smi_token_id = 28895
@@ -18,6 +19,7 @@ class Config:
         if 'cpu_mini' == self.scale:
             self.gpu_ids = '-1'
             
+            self.pin_memory = False
             self.pre_train_batch_size = 1
             self.pre_train_epochs = 1
             self.train_batch_size = 8
@@ -29,6 +31,7 @@ class Config:
         elif 'gpu_mini' == self.scale:
             self.gpu_ids = '0'
             
+            self.pin_memory = False
             self.pre_train_batch_size = 8
             self.pre_train_epochs = 30
             self.train_batch_size = 8
@@ -39,6 +42,7 @@ class Config:
         elif 'gpu_mid' == self.scale:
             self.gpu_ids = '0'
 
+            self.pin_memory = True
             self.pre_train_batch_size = 8
             self.pre_train_epochs = 10
             self.train_batch_size = 16
@@ -49,7 +53,9 @@ class Config:
 
         elif 'gpu_mul' == self.scale:
             self.gpu_ids = ','.join([str(i) for i in range(gpu_nums)])
+            self.dist_url = dist_url
 
+            self.pin_memory = True
             self.pre_train_batch_size = 8 * gpu_nums
             self.pre_train_epochs = 20
             self.train_batch_size = 16
@@ -70,8 +76,8 @@ class Config:
         self.mid_linear_dims = 128
         self.dropout_prob = 0.1
 
-        self.lr = 5e-5
-        self.other_lr = 5e-5
+        self.lr = 5e-5 * gpu_nums
+        self.other_lr = 5e-5 * gpu_nums
         self.weight_decay = 0
         self.other_weight_decay = 0
         self.adam_epsilon = 1e-8

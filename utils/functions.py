@@ -7,6 +7,8 @@ from typing import List, Optional
 from config import Config
 
 import torch
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 from SmilesPE.tokenizer import SPE_Tokenizer
 from transformers import PreTrainedTokenizer
 from transformers import AdamW, get_linear_schedule_with_warmup
@@ -346,3 +348,74 @@ def save_model(_config: Config, model, global_step=-1):
     torch.save(model_to_save.state_dict(), os.path.join(output_dir, 'model.pt'))
 
     return os.path.join(output_dir, 'model.pt')
+
+
+def setup(rank, world_size):
+    """
+    DDP初始化进程组
+    Args:
+        rank: 单机：gpu序号
+        world_size: 单机：gpu数量
+
+    Returns:
+
+    """
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+
+    # initialize the process group
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+
+
+def cleanup():
+    """
+    DDP释放进程组
+    Returns:
+
+    """
+    dist.destroy_process_group()
+
+
+def load_model_and_parallel_ddp(model, rank, ckpt_path=None, strict=True):
+    """
+    加载模型 & 放置到GPU中（单卡/多卡）
+    :param model: 已创建模型。
+    :param gpu_ids: 使用的GPU的id值，如：’0,1‘。
+    :param ckpt_path: 存储好的模型的地址。
+    :param strict: torch.load的参数。
+    :return: 模型以及所用设备（cuda）
+    """
+    model = model.to(rank)
+    ddp_model = DDP(model, device_ids=[rank])
+
+    # 从本地载入模型。
+    if ckpt_path is not None:
+        # logger.info(f'Load ckpt from {ckpt_path}')
+        if rank == 0:
+            logger.info(f'Load ckpt from {ckpt_path}')
+        map_location = {'cuda:{}'.format(0): 'cuda:{}'.format(rank)}
+        ddp_model.load_state_dict(torch.load(ckpt_path, map_location=map_location), strict=strict)
+
+    return ddp_model
+
+
+def save_model_ddp(_config: Config, model, global_step=-1):
+    """
+    保存模型
+    :param _config: 参数
+    :param model: 训练好的模型
+    :param global_step: 保存时迭代次数
+    :return: 无返回
+    """
+    base_output_dir = os.path.join(base_dir, _config.out_model_dir, _config.task_type)
+    output_dir = os.path.join(base_output_dir, 'checkpoint-{:0>5}'.format(global_step)) if \
+        global_step > 0 else os.path.join(base_output_dir, 'best')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
+    save_model_path = os.path.join(output_dir, 'model.pt')
+    torch.save(model.state_dict(), save_model_path)
+
+    dist.barrier()
+
+    return save_model_path
