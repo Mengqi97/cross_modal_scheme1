@@ -35,10 +35,14 @@ class ClintoxValidator(BaseValidator):
                                                device=device)
 
     def __call__(self, model):
-        predicts_list = []
+        predict_list = []
+        predict_score_list = []
         labels_list = []
         for predicts, labels in self.model_out(model):
-            predicts_list.extend([1 if ele[0] > 0 else 0 for ele in predicts.cpu().numpy()])
+            predict_list.extend([1 if ele[0] > 0 else 0 for ele in predicts.cpu().numpy()])
+            predict_score_list.extend([ele[0] for ele in predicts.item()])
             labels_list.extend([1 if ele[0] > 0 else 0 for ele in labels.cpu().numpy()])
-        return accuracy_score(predicts_list, labels_list)
+
+        logger.info(predict_score_list)
+        return accuracy_score(predict_list, labels_list)
 
