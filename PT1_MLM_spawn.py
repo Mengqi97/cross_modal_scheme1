@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader, BatchSampler
 from torch.utils.data.distributed import DistributedSampler
 from torch.cuda import get_device_name
 import torch.multiprocessing as mp
+import torch.distributed as dist
 from transformers import BertForMaskedLM
 
 base_dir = os.path.dirname(__file__)
@@ -144,6 +145,8 @@ def train(rank, word_size, _config: Config):
 
             logger.info('**********6-1 模型保存**********')
             save_model_ddp(_config, model)
+        dist.barrier()
+        
     empty_cache()
     if rank == 0:
         logger.info('**********7 训练结束**********')

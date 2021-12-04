@@ -416,6 +416,4 @@ def save_model_ddp(_config: Config, model, global_step=-1):
     save_model_path = os.path.join(output_dir, 'model_bbp.pt')
     torch.save(model.state_dict(), save_model_path)
 
-    dist.barrier()
-
     return save_model_path
