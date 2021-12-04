@@ -6,7 +6,7 @@ class Config:
                  use_pre_converted_data,
                  num_workers,
                  gpu_nums,
-                 dist_url,
+                 dist_url='env://',
                  drug_name_replace_prob=0.6):
         # 常量
         self.smi_token_id = 28895

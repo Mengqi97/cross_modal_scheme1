@@ -100,8 +100,11 @@ def train(_config: Config):
                     break
 
         scheduler.step()
-        logger.info('Epoch: {:>5} ---------- Loss: {:>20.15f}'.format(epoch, loss.cpu().detach().numpy().tolist()))
-        logger.info('Epoch: {:>5} ---------- Accuracy: {:>20.15f}'.format(epoch,validator(model)))
+        logger.info('Epoch: {:>5} ---------- Loss: {:>20.15f}'.format(epoch+1, loss.cpu().detach().numpy().tolist()))
+
+        acc, auc = validator(model)
+        logger.info('Epoch: {:>5} ---------- Accuracy: {:>20.15f}'.format(epoch+1, acc))
+        logger.info('Epoch: {:>5} ---------- ROC_AUC:  {:>20.15f}'.format(epoch+1, auc))
 
 
 if __name__ == '__main__':
