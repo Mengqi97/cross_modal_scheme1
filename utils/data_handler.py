@@ -8,8 +8,9 @@ from config import Config
 from utils.functions import SMILES_SPE_Tokenizer
 
 import torch
-from torch.utils.data import Dataset
+import nltk
 import pandas as pd
+from torch.utils.data import Dataset
 from transformers import BertTokenizer
 from tqdm import tqdm
 from icecream import ic
@@ -24,6 +25,7 @@ random.seed(70627)
 tokenizer_smi = None
 tokenizer_txt = None
 drug_name_replace_prob = None
+tokenizer_sen = nltk.data.load('tokenizers/punkt/english.pickle')
 
 
 class BaseUp:
@@ -190,6 +192,22 @@ class MLMUp(BaseUp):
         else:
             return converted_dataset
 
+    # @staticmethod
+    # def item_tokenize(series: pd.Series):
+    #     global tokenizer_smi
+    #     global tokenizer_txt
+    #     global drug_name_replace_prob
+    #     drug_name = series['DRUG_NAME'].lower()
+    #     abstract = series['ABSTRACTS'].lower()
+    #     smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
+    #
+    #     # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
+    #     if random.random() < drug_name_replace_prob:
+    #         abstract = abstract.replace(drug_name, '[SMI]')
+    #     abstract_tokenized = tokenizer_txt.encode(abstract, add_special_tokens=False)
+    #
+    #     return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
+
     @staticmethod
     def item_tokenize(series: pd.Series):
         global tokenizer_smi
@@ -197,15 +215,20 @@ class MLMUp(BaseUp):
         global drug_name_replace_prob
         drug_name = series['DRUG_NAME'].lower()
         abstract = series['ABSTRACTS'].lower()
+        abstract_sentence_list = tokenizer_sen.tokenize(series['ABSTRACTS'])
+        if not abstract.find(drug_name):
+            return '', ''
         smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
 
+        abstract_sentence_filter_list = [sentence.lower() for sentence in abstract_sentence_list if sentence.lower().find(drug_name)]
+        abstract_list = []
         # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
-        if random.random() < drug_name_replace_prob:
-            abstract = abstract.replace(drug_name, '[SMI]')
-        abstract_tokenized = tokenizer_txt.encode(abstract, add_special_tokens=False)
+        for sentence in abstract_sentence_filter_list:
+            if random.random() < drug_name_replace_prob:
+                abstract_list.append(sentence.replace(drug_name, '[SMI]'))
+        abstract_tokenized = tokenizer_txt.encode(' '.join(abstract_list), add_special_tokens=False)
 
         return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
-        # return 1, 2
 
     def tokenize_data(self):
         tokenized_data = pd.DataFrame()
@@ -229,7 +252,7 @@ class MLMUp(BaseUp):
             os.makedirs(save_path)
         tokenized_data.to_csv(os.path.join(
             save_path,
-            f'tokenized_data_{self.scale}_{self.drug_name_replace_prob}.csv',
+            f'tokenized_data_only_single_{self.scale}_{self.drug_name_replace_prob}.csv',
         ), index=False)
 
 
