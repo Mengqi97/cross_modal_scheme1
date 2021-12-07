@@ -146,8 +146,9 @@ def train(rank, word_size, _config: Config):
         if rank == 0:
             logger.info('Epoch: {:>5} ---------- MeanLoss: {:>20.15f}'.format(epoch, mean_loss.item()))
 
-            logger.info('**********6-1 模型保存**********')
-            save_model_ddp(_config, model)
+            if epoch%5 == 0:
+                logger.info('**********6-1 模型保存**********')
+                save_model_ddp(_config, model, global_step=global_step)
         dist.barrier()
         
     empty_cache()

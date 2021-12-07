@@ -57,12 +57,12 @@ class Config:
 
             self.pin_memory = True
             self.pre_train_batch_size = 4 * gpu_nums
-            self.pre_train_epochs = 20
+            self.pre_train_epochs = 30
             self.train_batch_size = 16
             self.train_epochs = 40
             self.one_epoch_show_results_times = 100
 
-            self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_big.csv'
+            self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_single_gpu_mid_0.6.csv'
 
 
         # 训练参数
