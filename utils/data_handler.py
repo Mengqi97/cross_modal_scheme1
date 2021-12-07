@@ -227,6 +227,8 @@ class MLMUp(BaseUp):
         for sentence in abstract_sentence_filter_list:
             if random.random() < drug_name_replace_prob:
                 abstract_list.append(sentence.replace(drug_name, '[SMI]'))
+            else:
+                abstract_list.append(sentence)
         abstract_tokenized = tokenizer_txt.encode(' '.join(abstract_list), add_special_tokens=False)
 
         return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
