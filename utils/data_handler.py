@@ -155,7 +155,7 @@ class MLMUp(BaseUp):
         """
         tmp_data = pd.DataFrame()
         # tqdm.pandas(desc='Tokenize&随机掩模中。。。。')
-        columns_list = data.columns.to_list()
+        columns_list = self.data.columns.to_list()
         apply_mode = 'raw'
         if 'tokenized_smi' in columns_list:
             apply_mode = 'tokenized'
