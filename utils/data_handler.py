@@ -38,7 +38,7 @@ class BaseUp:
         self.len_of_tokenizer = _config.len_of_tokenizer
         self.max_seq_len = _config.max_seq_len
         self.mode = _config.mode
-        self.data = pd.read_csv(data_path)
+        self.data = pd.read_csv(data_path).dropna()
 
         if 'default' == _config.tokenizer_txt_type:
             if _config.bert_dir:
