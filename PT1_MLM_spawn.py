@@ -14,6 +14,7 @@ import torch
 from loguru import logger
 from torch.utils.data import DataLoader, BatchSampler
 from torch.utils.data.distributed import DistributedSampler
+from torch.utils.tensorboard import SummaryWriter
 from torch.cuda import get_device_name
 import torch.multiprocessing as mp
 import torch.distributed as dist
@@ -33,6 +34,7 @@ def train(rank, word_size, _config: Config):
     setup(rank, word_size)
 
     if rank == 0:
+        tb_writer = SummaryWriter()
         logger.info('**********1-1 构建预训练数据集**********')
     if _config.use_pre_converted_data:
         if rank == 0:
@@ -139,9 +141,10 @@ def train(rank, word_size, _config: Config):
                 if not step % items_show_results:
                     logger.info(
                         'Step: {:>10} ---------- MeanLoss: {:>20.15f}'.format(step, mean_loss.item()))
+                    tb_writer.add_scalar('mean_loss', mean_loss.item(), global_step)
 
         if rank == 0:
-            logger.info('Epoch: {:>5} ---------- Loss: {:>20.15f}'.format(epoch, mean_loss.item()))
+            logger.info('Epoch: {:>5} ---------- MeanLoss: {:>20.15f}'.format(epoch, mean_loss.item()))
 
             logger.info('**********6-1 模型保存**********')
             save_model_ddp(_config, model)

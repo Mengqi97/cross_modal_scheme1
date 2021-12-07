@@ -13,6 +13,7 @@ from utils.functions import load_model_and_parallel, build_optimizer_and_schedul
 from loguru import logger
 from torch.utils.data import DataLoader, RandomSampler
 from torch.cuda import get_device_name
+from torch.utils.tensorboard import SummaryWriter
 from transformers import BertForMaskedLM
 
 base_dir = os.path.dirname(__file__)
@@ -23,6 +24,7 @@ str_time = time.strftime('[%Y-%m-%d]%H-%M')
 
 
 def train(_config: Config):
+    tb_writer = SummaryWriter()
     logger.info('**********1-1 构建预训练数据集**********')
     if _config.use_pre_converted_data:
         logger.info('使用预处理好的数据')
@@ -59,6 +61,7 @@ def train(_config: Config):
         model = BertForMaskedLM.from_pretrained(_config.bert_name)
     model.resize_token_embeddings(_config.len_of_tokenizer)
     model, device = load_model_and_parallel(model, _config.gpu_ids)
+
     # 判断是否进行多gpu训练，进过DataParallel后，模型会添加module属性，用以调用自定义方法
     use_n_gpus = False
     if hasattr(model, 'module'):
@@ -125,6 +128,7 @@ def train(_config: Config):
                     break
 
             if not step % items_show_results:
+                tb_writer.add_scalar('loss', loss.cpu().detach().numpy().tolist(), global_step)
                 logger.info(
                     'Step: {:>10} ---------- Loss: {:>20.15f}'.format(step, loss.cpu().detach().numpy().tolist()))
 
@@ -167,10 +171,6 @@ if __name__ == '__main__':
         num_workers=args.num_workers,
         gpu_nums=args.gpu_nums,
     )
-    import torch
 
-    os.system("nvidia-smi")
-    logger.info(torch.cuda.device_count())
-    logger.info(torch.cuda.current_device())
     train(config)
     logger.info('**********结束训练**********')
