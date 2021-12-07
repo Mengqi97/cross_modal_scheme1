@@ -215,12 +215,13 @@ class MLMUp(BaseUp):
         global drug_name_replace_prob
         drug_name = series['DRUG_NAME'].lower()
         abstract = series['ABSTRACTS'].lower()
-        abstract_sentence_list = tokenizer_sen.tokenize(series['ABSTRACTS'])
-        if not abstract.find(drug_name):
+        if abstract.find(drug_name) == -1:
             return '', ''
+        abstract_sentence_list = tokenizer_sen.tokenize(series['ABSTRACTS'])
         smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
 
-        abstract_sentence_filter_list = [sentence.lower() for sentence in abstract_sentence_list if sentence.lower().find(drug_name)]
+        abstract_sentence_filter_list = [sentence.lower() for sentence in abstract_sentence_list if
+                                         sentence.lower().find(drug_name) != -1]
         abstract_list = []
         # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
         for sentence in abstract_sentence_filter_list:
