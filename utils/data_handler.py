@@ -80,7 +80,7 @@ class MLMUp(BaseUp):
         del _config
 
     @staticmethod
-    def convert_data(series: pd.Series, self):
+    def convert_data(series: pd.Series, self, mode):
         """
         处理读入数据，输出tokenizer后的输入数据与样本标签。
         Args:
@@ -100,14 +100,18 @@ class MLMUp(BaseUp):
         smi_token_id = self.smi_token_id
         mask_token_id = self.tokenizer_txt.mask_token_id
 
-        drug_name = series['DRUG_NAME'].lower()
-        abstract = series['ABSTRACTS'].lower()
-        smi_tokenized = self.tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
+        if mode == 'raw':
+            drug_name = series['DRUG_NAME'].lower()
+            abstract = series['ABSTRACTS'].lower()
+            smi_tokenized = self.tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
 
-        # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
-        if random.random() < self.drug_name_replace_prob:
-            abstract = abstract.replace(drug_name, '[SMI]')
-        abstract_tokenized = self.tokenizer_txt.encode(abstract, add_special_tokens=False)
+            # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
+            if random.random() < self.drug_name_replace_prob:
+                abstract = abstract.replace(drug_name, '[SMI]')
+            abstract_tokenized = self.tokenizer_txt.encode(abstract, add_special_tokens=False)
+        elif mode == 'tokenized':
+            smi_tokenized = json.loads(series['tokenized_smi'])
+            abstract_tokenized = json.loads(series['tokenized_txt'])
 
         # 将'[SMI]'的位置替换为对应的分子式的ID序列，并且概率的将token替换为'[MASK]'对应的ID。
         tokenized = []
@@ -151,7 +155,11 @@ class MLMUp(BaseUp):
         """
         tmp_data = pd.DataFrame()
         # tqdm.pandas(desc='Tokenize&随机掩模中。。。。')
-        tmp_data[['tokenized', 'tokenized_mlm']] = self.data.apply(self.convert_data, axis=1, args=(self,),
+        columns_list = data.columns.to_list()
+        apply_mode = 'raw'
+        if 'tokenized_smi' in columns_list:
+            apply_mode = 'tokenized'
+        tmp_data[['tokenized', 'tokenized_mlm']] = self.data.apply(self.convert_data, axis=1, args=(self, apply_mode),
                                                                    result_type='expand')
         tmp_tokenized_list = tmp_data['tokenized'].tolist()
         tmp_tokenized_mlm_list = tmp_data['tokenized_mlm'].tolist()

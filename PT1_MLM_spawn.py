@@ -34,7 +34,7 @@ def train(rank, word_size, _config: Config):
     setup(rank, word_size)
 
     if rank == 0:
-        tb_writer = SummaryWriter()
+        tb_writer = SummaryWriter(os.path.join(base_dir, 'runs'))
         logger.info('**********1-1 构建预训练数据集**********')
     if _config.use_pre_converted_data:
         if rank == 0:
