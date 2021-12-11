@@ -245,7 +245,12 @@ def load_model_and_parallel(model, gpu_ids: str, ckpt_path=None, strict=True):
     if ckpt_path is not None:
         # logger.info(f'Load ckpt from {ckpt_path}')
         logger.info(f'Load ckpt from {ckpt_path}')
-        model.load_state_dict(torch.load(ckpt_path, map_location=torch.device('cpu')), strict=strict)
+        params_dict = torch.load(ckpt_path, map_location=torch.device('cpu'))
+
+        for key, value in list(params_dict.items()):
+            if key.find('module') >= 0:
+                params_dict['.'.join(key.split('.')[1:])] = params_dict.pop(key)
+        model.load_state_dict(params_dict, strict=strict)
 
     # 将模型送入指定设备
     model.to(device)
@@ -413,7 +418,11 @@ def save_model_ddp(_config: Config, model, global_step=-1):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
-    save_model_path = os.path.join(output_dir, 'model_bbp.pt')
+    save_model_path = os.path.join(output_dir, 'model_ddp.pt')
+    model = (
+        model.module if hasattr(model, 'module') else model
+    )
+
     torch.save(model.state_dict(), save_model_path)
 
     return save_model_path
