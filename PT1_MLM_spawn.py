@@ -142,6 +142,8 @@ def train(rank, word_size, _config: Config):
                     logger.info(
                         'Step: {:>10} ---------- MeanLoss: {:>20.15f}'.format(step, mean_loss.item()))
                     tb_writer.add_scalar('mean_loss', mean_loss.item(), global_step)
+                    tb_writer.add_scalar('loss', loss.item(), global_step)
+                    tb_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
 
         if rank == 0:
             logger.info('Epoch: {:>5} ---------- MeanLoss: {:>20.15f}'.format(epoch, mean_loss.item()))

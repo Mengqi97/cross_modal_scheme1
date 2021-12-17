@@ -57,7 +57,7 @@ class Config:
 
             self.pin_memory = True
             self.pre_train_batch_size = 4 * gpu_nums
-            self.pre_train_epochs = 30
+            self.pre_train_epochs = 20
             self.train_batch_size = 16
             self.train_epochs = 40
             self.one_epoch_show_results_times = 100
@@ -76,12 +76,12 @@ class Config:
         self.mid_linear_dims = 128
         self.dropout_prob = 0.1
 
-        self.lr = 5e-5 * gpu_nums
-        self.other_lr = 5e-5 * gpu_nums
+        self.lr = 4e-5
+        self.other_lr = 4e-5
         self.weight_decay = 0
         self.other_weight_decay = 0
         self.adam_epsilon = 1e-8
-        self.warmup_proportion = 0
+        self.warmup_proportion = 0.15
 
         # 目录
         self.bert_dir = 'models/PubMedBERT_abstract'
