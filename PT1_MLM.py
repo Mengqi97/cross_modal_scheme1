@@ -3,6 +3,7 @@ import pickle
 import time
 import argparse
 import sys
+import json
 
 from torch.cuda.memory import empty_cache
 
@@ -15,6 +16,7 @@ from torch.utils.data import DataLoader, RandomSampler
 from torch.cuda import get_device_name
 from torch.utils.tensorboard import SummaryWriter
 from transformers import BertForMaskedLM
+import pandas as pd
 
 base_dir = os.path.dirname(__file__)
 str_time = time.strftime('[%Y-%m-%d]%H-%M')
@@ -23,7 +25,7 @@ str_time = time.strftime('[%Y-%m-%d]%H-%M')
 # logger.add(os.path.join(base_dir, 'log', f'{str_time}.log'), encoding='utf-8')
 
 
-def train(_config: Config):
+def train(_config: Config, _args):
     tb_writer = SummaryWriter()
     logger.info('**********1-1 构建预训练数据集**********')
     if _config.use_pre_converted_data:
@@ -36,8 +38,10 @@ def train(_config: Config):
             train_dataset_up = pickle.load(f)
     else:
         logger.info('重新预处理数据')
-        train_dataset_up = MLMUp(data_path=os.path.join(base_dir, _config.data_dir, _config.pre_train_corpus_file_path),
-                                 _config=_config).convert_dataset()
+        train_dataset_uper = MLMUp(
+            data_path=os.path.join(base_dir, _config.data_dir, _config.pre_train_corpus_file_path),
+            _config=_config)
+        train_dataset_up = train_dataset_uper.convert_dataset()
         if 'convert_data' == _config.mode:
             logger.info('********** 预处理数据结束 **********')
             return
@@ -60,7 +64,15 @@ def train(_config: Config):
     else:
         model = BertForMaskedLM.from_pretrained(_config.bert_name)
     model.resize_token_embeddings(_config.len_of_tokenizer)
-    model, device = load_model_and_parallel(model, _config.gpu_ids)
+    if _config.task_type == 'MLM' and _config.mode == 'analysis':
+        model, device = load_model_and_parallel(model, _config.gpu_ids, os.path.join(
+            base_dir,
+            config.out_model_dir,
+            config.pre_train_task,
+            _args.model_name,
+        ))
+    else:
+        model, device = load_model_and_parallel(model, _config.gpu_ids)
 
     # 判断是否进行多gpu训练，进过DataParallel后，模型会添加module属性，用以调用自定义方法
     use_n_gpus = False
@@ -99,6 +111,92 @@ def train(_config: Config):
     logger.info('{:>30}:  {:>10}'.format('per_epoch_items', per_epoch_items))
     logger.info('{:>30}:  {:>10}'.format('total_train_items', total_train_items))
     logger.info('{:>30}:  {:>10}'.format('items_show_results', items_show_results))
+
+    logger.info('**********5-1 数据分析**********')
+    if _config.task_type == 'MLM' and _config.mode == 'analysis':
+        model.train()
+        smi_token_id = _config.smi_token_id
+        tokenizer_txt = train_dataset_uper.tokenizer_txt
+        tokenizer_smi = train_dataset_uper.tokenizer_smi
+        mask_token_id = tokenizer_txt.mask_token_id
+
+        wrong_predict_token_pair = []
+        for step, batch_data in enumerate(train_loader):
+            for key in batch_data.keys():
+                batch_data[key] = batch_data[key].to(device)
+            outputs = model(**batch_data)
+
+            predict_list = outputs.logits.cpu().detach().numpy().tolist()
+            label_list = batch_data['labels'].cpu().detach().numpy().tolist()
+            input_list = batch_data['input_ids'].cpu().detach().numpy().tolist()
+            for i in range(_config.pre_train_batch_size):
+                predict_decode = []
+                label_decode = []
+                for j in range(_config.max_seq_len):
+                    predict = predict_list[i][j]
+                    predict_id = predict.index(max(predict))
+                    if predict_id > smi_token_id:
+                        predict_id_decode = tokenizer_smi.decode(predict_id)
+                    else:
+                        predict_id_decode = tokenizer_txt.decode(predict_id)
+                    predict_decode.append(predict_id_decode)
+
+                    label_id = label_list[i][j]
+                    if label_id > smi_token_id:
+                        label_id_decode = tokenizer_smi.decode(label_id)
+                    else:
+                        label_id_decode = tokenizer_txt.decode(label_id)
+                    label_decode.append(label_id_decode)
+                    if predict_id != label_id:
+                        wrong_predict_token_pair.append([[label_id, label_id_decode], [predict_id, predict_id_decode], 1 if input_list[i][j] == mask_token_id else 0])
+
+
+                # predict_decode = ' '.join(predict_decode)
+                # label_decode = ' '.join(label_decode)
+                #
+                # print('----------predict')
+                # print(predict_decode)
+                # print('----------label')
+                # print(label_decode)
+                # print(wrong_predict_token_pair)
+        with open(os.path.join(base_dir, _config.data_dir, 'mlm_analysis.json'), 'w', encoding='utf-8') as f:
+            f.write(json.dumps(wrong_predict_token_pair))
+        return
+
+
+
+
+            # predicts = [
+            #     token.index(max(token)) if token.index(max(token)) <= _config.smi_token_id else _config.smi_token_id for
+            #     token in predict]
+            # predict_smi = [token.index(max(token)) for token in predict if
+            #                token.index(max(token)) > _config.smi_token_id]
+            # label_txt = [token if token <= _config.smi_token_id else _config.smi_token_id for token in label]
+            # label_smi = [token for token in label if token > _config.smi_token_id]
+            #
+            # # print(predicts)
+            # # print(predict_smi)
+            # print('----------label_txt')
+            # time_start = time.time()
+            # for _ in range(100):
+            #     decoded_txt_1 = train_dataset_uper.tokenizer_txt.decode(label_txt)
+            # time_end = time.time()
+            # print(time_end - time_start)
+            #
+            # time_start = time.time()
+            # for _ in range(100):
+            #     decoded_txt_2 = [train_dataset_uper.tokenizer_txt.decode(token_id) for token_id in label_txt]
+            # time_end = time.time()
+            # print(time_end - time_start)
+            #
+            # print(decoded_txt_1)
+            # print(decoded_txt_2)
+            # print('----------label_smi')
+            # print(train_dataset_uper.tokenizer_smi.decode(label_smi))
+            # print('----------pre_txt')
+            # print(train_dataset_uper.tokenizer_txt.decode(predicts))
+            # print('----------pre_smi')
+            # print(train_dataset_uper.tokenizer_smi.decode(predict_smi))
 
     logger.info('**********5-1 模型训练**********')
     for epoch in range(_config.pre_train_epochs):
@@ -149,9 +247,10 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default='0', type=int)
     parser.add_argument('--num_workers', dest='num_workers', default='1', type=int)
     parser.add_argument('--gpu_nums', dest='gpu_nums', default='1', type=int)
+    parser.add_argument('--model_name', dest='model_name', default='best/model.pt', type=str)
 
     task_type_list = ['MLM']
-    mode_list = ['train', 'convert_data']
+    mode_list = ['train', 'convert_data', 'analysis']
     scale_list = ['cpu_mini', 'gpu_mini', 'gpu_mid', 'gpu_mul']
 
     args = parser.parse_args()
@@ -172,5 +271,5 @@ if __name__ == '__main__':
         gpu_nums=args.gpu_nums,
     )
 
-    train(config)
+    train(config, args)
     logger.info('**********结束训练**********')
