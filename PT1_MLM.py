@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader, RandomSampler
 from torch.cuda import get_device_name
 from torch.utils.tensorboard import SummaryWriter
 from transformers import BertForMaskedLM
-import pandas as pd
+from tqdm import tqdm
 
 base_dir = os.path.dirname(__file__)
 str_time = time.strftime('[%Y-%m-%d]%H-%M')
@@ -121,7 +121,7 @@ def train(_config: Config, _args):
         mask_token_id = tokenizer_txt.mask_token_id
 
         wrong_predict_token_pair = []
-        for step, batch_data in enumerate(train_loader):
+        for step, batch_data in enumerate(tqdm(train_loader)):
             for key in batch_data.keys():
                 batch_data[key] = batch_data[key].to(device)
             outputs = model(**batch_data)
@@ -162,41 +162,6 @@ def train(_config: Config, _args):
         with open(os.path.join(base_dir, _config.data_dir, 'mlm_analysis.json'), 'w', encoding='utf-8') as f:
             f.write(json.dumps(wrong_predict_token_pair))
         return
-
-
-
-
-            # predicts = [
-            #     token.index(max(token)) if token.index(max(token)) <= _config.smi_token_id else _config.smi_token_id for
-            #     token in predict]
-            # predict_smi = [token.index(max(token)) for token in predict if
-            #                token.index(max(token)) > _config.smi_token_id]
-            # label_txt = [token if token <= _config.smi_token_id else _config.smi_token_id for token in label]
-            # label_smi = [token for token in label if token > _config.smi_token_id]
-            #
-            # # print(predicts)
-            # # print(predict_smi)
-            # print('----------label_txt')
-            # time_start = time.time()
-            # for _ in range(100):
-            #     decoded_txt_1 = train_dataset_uper.tokenizer_txt.decode(label_txt)
-            # time_end = time.time()
-            # print(time_end - time_start)
-            #
-            # time_start = time.time()
-            # for _ in range(100):
-            #     decoded_txt_2 = [train_dataset_uper.tokenizer_txt.decode(token_id) for token_id in label_txt]
-            # time_end = time.time()
-            # print(time_end - time_start)
-            #
-            # print(decoded_txt_1)
-            # print(decoded_txt_2)
-            # print('----------label_smi')
-            # print(train_dataset_uper.tokenizer_smi.decode(label_smi))
-            # print('----------pre_txt')
-            # print(train_dataset_uper.tokenizer_txt.decode(predicts))
-            # print('----------pre_smi')
-            # print(train_dataset_uper.tokenizer_smi.decode(predict_smi))
 
     logger.info('**********5-1 模型训练**********')
     for epoch in range(_config.pre_train_epochs):
