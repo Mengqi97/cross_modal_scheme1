@@ -97,7 +97,6 @@ def train(rank, word_size, _config: Config):
     if rank == 0:
         logger.info('**********4-1 初始化训练参数**********')
     global_step = 0
-    items_show_results = per_epoch_items // _config.one_epoch_show_results_times
     # epoch_loss = []
     if rank == 0:
         logger.info('**********4-2 显示训练参数**********')
@@ -113,7 +112,7 @@ def train(rank, word_size, _config: Config):
         logger.info(f'********** Parameters: scale **********')
         logger.info('{:>30}:  {:>10}'.format('per_epoch_items', per_epoch_items))
         logger.info('{:>30}:  {:>10}'.format('total_train_items', total_train_items))
-        logger.info('{:>30}:  {:>10}'.format('items_show_results', items_show_results))
+        logger.info('{:>30}:  {:>10}'.format('items_show_results', _config.show_results_times))
 
     logger.info('**********5-1 模型训练**********')
     for epoch in range(_config.pre_train_epochs):
@@ -125,34 +124,34 @@ def train(rank, word_size, _config: Config):
                 batch_data[key] = batch_data[key].to(rank)
             outputs = model(**batch_data)
 
-            model.zero_grad()
-
-            loss = outputs.loss
+            loss = outputs.loss / _config.accum_steps
             mean_loss = (mean_loss * step + loss.detach()) / (step + 1)
 
-            # optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
-            scheduler.step()
 
-            global_step += 1
+            if (global_step + 1) % _config.accum_steps == 0 or (global_step + 1) == total_train_items:
+                optimizer.step()
+                optimizer.zero_grad()
+                scheduler.step()
+                global_step += 1
 
-            if rank == 0:
-                if not step % items_show_results:
-                    logger.info(
-                        'Step: {:>10} ---------- MeanLoss: {:>20.15f}'.format(step, mean_loss.item()))
-                    tb_writer.add_scalar('mean_loss', mean_loss.item(), global_step)
-                    tb_writer.add_scalar('loss', loss.item(), global_step)
-                    tb_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
+                if rank == 0:
+                    if not (global_step + 1) % _config.show_results_times:
+                        logger.info(
+                            'Step: {:>10} ---------- MeanLoss: {:>20.15f}'.format(step, mean_loss.item()))
+                        tb_writer.add_scalar('mean_loss', mean_loss.item(), global_step)
+                        tb_writer.add_scalar('loss', loss.item(), global_step)
+                        tb_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
+
+                if (global_step + 1) % _config.model_save_steps == 0:
+                    if rank == 0:
+                        logger.info('**********6-1 模型保存**********')
+                        save_model_ddp(_config, model, global_step=global_step)
+                    dist.barrier()
 
         if rank == 0:
             logger.info('Epoch: {:>5} ---------- MeanLoss: {:>20.15f}'.format(epoch, mean_loss.item()))
 
-            if epoch%5 == 0:
-                logger.info('**********6-1 模型保存**********')
-                save_model_ddp(_config, model, global_step=global_step)
-        dist.barrier()
-        
     empty_cache()
     if rank == 0:
         logger.info('**********7 训练结束**********')
@@ -165,6 +164,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mode', dest='mode', default='train', type=str)
     parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str)
     parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default=0, type=int)
+    parser.add_argument('-a', '--accum_steps', dest='gradient accumulation steps', default=0, type=int)
     parser.add_argument('--num_workers', dest='num_workers', default=1, type=int)
     parser.add_argument('--word_size', dest='word_size', default=1, type=int)
     parser.add_argument('--dist_url', dest='dist_url', default='env://', type=str)
@@ -190,6 +190,7 @@ if __name__ == '__main__':
         num_workers=args.num_workers,
         gpu_nums=args.word_size,
         dist_url=args.dist_url,
+        accum_steps=args.accum_steps,
     )
 
     logger.info(os.system("nvidia-smi"))
