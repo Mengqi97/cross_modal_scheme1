@@ -7,6 +7,7 @@ class Config:
                  num_workers,
                  gpu_nums,
                  dist_url='env://',
+                 accum_steps=1,
                  drug_name_replace_prob=0.6):
         # 常量
         self.smi_token_id = 28895
@@ -24,7 +25,7 @@ class Config:
             self.pre_train_epochs = 1
             self.train_batch_size = 8
             self.train_epochs = 10
-            self.one_epoch_show_results_times = 2
+            self.show_results_times = 2
 
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
 
@@ -36,7 +37,7 @@ class Config:
             self.pre_train_epochs = 30
             self.train_batch_size = 8
             self.train_epochs = 40
-            self.one_epoch_show_results_times = 2
+            self.show_results_times = 2
 
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
         elif 'gpu_mid' == self.scale:
@@ -47,7 +48,7 @@ class Config:
             self.pre_train_epochs = 10
             self.train_batch_size = 16
             self.train_epochs = 40
-            self.one_epoch_show_results_times = 100
+            self.show_results_times = 100
 
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_big.csv'
 
@@ -56,17 +57,19 @@ class Config:
             self.dist_url = dist_url
 
             self.pin_memory = True
-            self.pre_train_batch_size = 4 * gpu_nums
+            self.accum_steps = accum_steps
+            self.pre_train_batch_size = 32 // accum_steps
             self.pre_train_epochs = 20
             self.train_batch_size = 16
             self.train_epochs = 40
-            self.one_epoch_show_results_times = 100
+            self.show_results_times = 10
 
             self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_single_gpu_mid_0.6.csv'
 
 
         # 训练参数
-        self.max_seq_len = 512
+        self.max_seq_len = 256
+        self.model_save_steps = 1000
 
         self.mlm_prob = 0.15
         self.mlm_replace_mask_prob = 0.8
@@ -76,12 +79,12 @@ class Config:
         self.mid_linear_dims = 128
         self.dropout_prob = 0.1
 
-        self.lr = 4e-5
-        self.other_lr = 4e-5
-        self.weight_decay = 0
-        self.other_weight_decay = 0
+        self.lr = 2e-5 * gpu_nums
+        self.other_lr = 2e-5 * gpu_nums
+        self.weight_decay = 0.01
+        self.other_weight_decay = 0.01
         self.adam_epsilon = 1e-8
-        self.warmup_proportion = 0.15
+        self.warmup_proportion = 0.01
 
         # 目录
         self.bert_dir = 'models/PubMedBERT_abstract'

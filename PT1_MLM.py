@@ -95,7 +95,7 @@ def train(_config: Config, _args):
 
     logger.info('**********4-1 初始化训练参数**********')
     global_step = 0
-    items_show_results = per_epoch_items // _config.one_epoch_show_results_times
+    items_show_results = per_epoch_items // _config.show_results_times
     # epoch_loss = []
     logger.info('**********4-2 显示训练参数**********')
     logger.info(f'********** 训练规模：{_config.scale} **********')
