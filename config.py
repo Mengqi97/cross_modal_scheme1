@@ -58,8 +58,8 @@ class Config:
 
             self.pin_memory = True
             self.accum_steps = accum_steps
-            self.pre_train_batch_size = 32 // accum_steps
-            self.pre_train_epochs = 20
+            self.pre_train_batch_size = 256 // accum_steps
+            self.pre_train_epochs = 4
             self.train_batch_size = 16
             self.train_epochs = 40
             self.show_results_times = 10
@@ -68,9 +68,9 @@ class Config:
 
 
         # 训练参数
-        self.max_seq_len = 256
+        self.max_seq_len = 128
         self.ignore_index = -100
-        self.model_save_steps = 1000
+        self.model_save_steps = 2000
 
         self.mlm_prob = 0.15
         self.max_prediction_per_seq = round(self.max_seq_len * self.mlm_prob)
@@ -86,7 +86,7 @@ class Config:
         self.weight_decay = 0.01
         self.other_weight_decay = 0.01
         self.adam_epsilon = 1e-8
-        self.warmup_proportion = 0.01
+        self.warmup_proportion = 0.1
 
         # 目录
         self.bert_dir = 'models/PubMedBERT_abstract'

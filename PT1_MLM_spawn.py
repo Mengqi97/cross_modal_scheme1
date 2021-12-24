@@ -1,3 +1,4 @@
+from logging import log
 import os
 import pickle
 import time
@@ -35,7 +36,8 @@ def train(rank, word_size, _config: Config):
     setup(rank, word_size)
 
     if rank == 0:
-        tb_writer = SummaryWriter(os.path.join(base_dir, 'runs'))
+        tb_writer = SummaryWriter(os.path.join(base_dir, 'runs', time.strftime("%Y-%m-%d=%H-%M", time.localtime())))
+        logger.info('Tensorboard Path: {}'.format(time.strftime("%Y-%m-%d=%H-%M", time.localtime())))   
         logger.info('**********1-1 构建预训练数据集**********')
     if _config.use_pre_converted_data:
         if rank == 0:
@@ -49,8 +51,9 @@ def train(rank, word_size, _config: Config):
     else:
         if rank == 0:
             logger.info('重新预处理数据')
-        train_dataset_up = MLMUp(data_path=os.path.join(base_dir, _config.data_dir, _config.pre_train_corpus_file_path),
-                                 _config=_config).convert_dataset()
+        train_dataset_uper = MLMUp(data_path=os.path.join(base_dir, _config.data_dir, _config.pre_train_corpus_file_path),
+                                 _config=_config)
+        train_dataset_up = train_dataset_uper.convert_dataset()
         if 'convert_data' == _config.mode:
             if rank == 0:
                 logger.info('********** 预处理数据结束 **********')
@@ -115,14 +118,19 @@ def train(rank, word_size, _config: Config):
         logger.info('{:>30}:  {:>10}'.format('total_train_items', total_train_items))
         logger.info('{:>30}:  {:>10}'.format('items_show_results', _config.show_results_times))
 
-    logger.info('**********5-1 模型训练**********')
+        logger.info('**********5-1 模型训练**********')
+        time_start = time.time()
     for epoch in range(_config.pre_train_epochs):
         train_sampler.set_epoch(epoch)
         model.train()
         mean_loss = torch.zeros(1).to(rank)
         if rank == 0:
             predict_list = []
+            predict_smi_list = []
+            predict_txt_list = []
             label_list = []
+            label_smi_list = []
+            label_txt_list = []
         for step, batch_data in enumerate(train_loader):
             for key in batch_data.keys():
                 batch_data[key] = batch_data[key].to(rank)
@@ -134,37 +142,66 @@ def train(rank, word_size, _config: Config):
             if rank == 0:
                 labels = batch_data['labels']
                 _, predicts = outputs.logits.max(axis=-1)
-                predict_list += predicts[labels != _config.ignore_index].cpu().tolist()
-                label_list += labels[labels != _config.ignore_index].cpu().tolist()
+                masked_token_mask = labels != _config.ignore_index
+                smi_token_mask = labels > _config.smi_token_id
+                predict_list += predicts[masked_token_mask].cpu().tolist()
+                predict_smi_list += predicts[masked_token_mask & smi_token_mask].cpu().tolist()
+                predict_txt_list += predicts[masked_token_mask & (~smi_token_mask)].cpu().tolist()
+                label_list += labels[masked_token_mask].cpu().tolist()
+                label_smi_list += labels[masked_token_mask & smi_token_mask].cpu().tolist()
+                label_txt_list += labels[masked_token_mask & (~smi_token_mask)].cpu().tolist()
 
             loss.backward()
 
+            global_step += 1
             if (global_step + 1) % _config.accum_steps == 0 or (global_step + 1) == total_train_items:
                 optimizer.step()
                 optimizer.zero_grad()
                 scheduler.step()
-                global_step += 1
-
+                
                 if rank == 0:
+                    if global_step+1 == _config.accum_steps:
+                        logger.info(os.system("nvidia-smi"))
                     if not (global_step + 1) % _config.show_results_times:
                         acc = accuracy_score(predict_list, label_list)
+                        acc_smi = accuracy_score(predict_smi_list, label_smi_list)
+                        acc_txt = accuracy_score(predict_txt_list, label_txt_list)
                         logger.info(
                             'Step: {:>10} ---------- MeanLoss: {:>20.15f}'.format(step+1, mean_loss.item()))
                         logger.info(
                             'Step: {:>10} ---------- Acc     : {:>20.15f}'.format(step+1, acc * 100))
+                        logger.info(
+                            'Step: {:>10} ---------- SMI Acc : {:>20.15f}'.format(step+1, acc_smi * 100))
+                        logger.info(
+                            'Step: {:>10} ---------- TXT Acc : {:>20.15f}'.format(step+1, acc_txt * 100))
                         tb_writer.add_scalar('mean_loss', mean_loss.item(), global_step)
                         tb_writer.add_scalar('loss', loss.item(), global_step)
                         tb_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
                         tb_writer.add_scalar('accuracy', acc * 100, global_step)
+                        tb_writer.add_scalar('accuracy_smi', acc_smi * 100, global_step)
+                        tb_writer.add_scalar('accuracy_txt', acc_txt * 100, global_step)
+                        tb_writer.add_scalar('ratio_smi_txt', round(len(predict_smi_list)/len(predict_txt_list), 4), global_step)
 
-                if (global_step + 1) % _config.model_save_steps == 0:
+                if (global_step + 1) % _config.model_save_steps == 0 or global_step == total_train_items:
                     if rank == 0:
+                        time_end = time.time()
+                        logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format(global_step+1, time_end-time_start))
                         logger.info('**********6-1 模型保存**********')
-                        save_model_ddp(_config, model, global_step=global_step)
+                        save_model_ddp(_config, model, global_step=global_step+1)
                     dist.barrier()
 
         if rank == 0:
-            logger.info('Epoch: {:>5} ---------- MeanLoss: {:>20.15f}'.format(epoch, mean_loss.item()))
+            logger.info('Epoch: {:>5} ---------- MeanLoss: {:>20.15f}'.format(epoch+1, mean_loss.item()))
+            logger.info('**********5-2 动态掩模**********')
+        train_dataset_up = train_dataset_uper.convert_dataset()
+        train_dataset = MLMDataset(train_dataset_up, _config=_config)
+        train_sampler = DistributedSampler(train_dataset)
+        train_batch_sampler = BatchSampler(train_sampler, _config.pre_train_batch_size, drop_last=True)
+        train_loader = DataLoader(dataset=train_dataset,
+                                batch_sampler=train_batch_sampler,
+                                pin_memory=_config.pin_memory,
+                                num_workers=_config.num_workers)
+        del train_dataset
 
     empty_cache()
     if rank == 0:
@@ -178,7 +215,8 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mode', dest='mode', default='train', type=str)
     parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str)
     parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default=0, type=int)
-    parser.add_argument('-a', '--accum_steps', dest='gradient accumulation steps', default=0, type=int)
+    parser.add_argument('-a', '--accum_steps', dest='accum_steps', default=0, type=int)
+    parser.add_argument('-i', '--information', dest='information', default='', type=str)
     parser.add_argument('--num_workers', dest='num_workers', default=1, type=int)
     parser.add_argument('--word_size', dest='word_size', default=1, type=int)
     parser.add_argument('--dist_url', dest='dist_url', default='env://', type=str)
@@ -194,7 +232,8 @@ if __name__ == '__main__':
         logger.info('********** 参数错误 **********')
         sys.exit()
     # logger.info(args.mode)
-    # logger.info(args.scale)   
+    # logger.info(args.scale)
+    logger.info('Information: {}'.format(args.information if args.information else 'None'))
 
     config = Config(
         task_type=args.task_type,
