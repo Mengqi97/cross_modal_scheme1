@@ -17,6 +17,7 @@ from torch.cuda import get_device_name
 from torch.utils.tensorboard import SummaryWriter
 from transformers import BertForMaskedLM
 from tqdm import tqdm
+from sklearn.metrics import accuracy_score
 
 base_dir = os.path.dirname(__file__)
 str_time = time.strftime('[%Y-%m-%d]%H-%M')
@@ -166,6 +167,8 @@ def train(_config: Config, _args):
     logger.info('**********5-1 模型训练**********')
     for epoch in range(_config.pre_train_epochs):
         model.train()
+        predict_list = []
+        label_list = []
         for step, batch_data in enumerate(train_loader):
             for key in batch_data.keys():
                 batch_data[key] = batch_data[key].to(device)
@@ -177,6 +180,10 @@ def train(_config: Config, _args):
                 loss = outputs.loss.mean()
             else:
                 loss = outputs.loss
+            labels = batch_data['labels']
+            _, predicts = outputs.logits.max(axis=-1)
+            predict_list += predicts[labels != _config.ignore_index].cpu().tolist()
+            label_list += labels[labels != _config.ignore_index].cpu().tolist()
 
             # optimizer.zero_grad()
             loss.backward()
@@ -190,13 +197,15 @@ def train(_config: Config, _args):
                 if not global_step % 5:
                     break
 
-            if not step % items_show_results:
+            if not step+1 % items_show_results:
                 tb_writer.add_scalar('loss', loss.cpu().detach().numpy().tolist(), global_step)
                 logger.info(
-                    'Step: {:>10} ---------- Loss: {:>20.15f}'.format(step, loss.cpu().detach().numpy().tolist()))
+                    'Step: {:>10} ---------- Loss: {:>20.15f}'.format(step+1, loss.cpu().detach().numpy().tolist()))
+                logger.info(
+                    'Step: {:>10} ---------- Acc : {:>20.15f}'.format(step+1, accuracy_score(predict_list, label_list)))
 
         # epoch_loss.append([loss.cpu().detach().numpy().tolist()])
-        logger.info('Epoch: {:>5} ---------- Loss: {:>20.15f}'.format(epoch, loss.cpu().detach().numpy().tolist()))
+        logger.info('Epoch: {:>5} ---------- Loss: {:>20.15f}'.format(epoch+1, loss.cpu().detach().numpy().tolist()))
 
         logger.info('**********6-1 模型保存**********')
         save_model(_config, model)

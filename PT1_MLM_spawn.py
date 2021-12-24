@@ -19,6 +19,7 @@ from torch.cuda import get_device_name
 import torch.multiprocessing as mp
 import torch.distributed as dist
 from transformers import BertForMaskedLM
+from sklearn.metrics import accuracy_score
 
 base_dir = os.path.dirname(__file__)
 str_time = time.strftime('[%Y-%m-%d]%H-%M')
@@ -119,6 +120,9 @@ def train(rank, word_size, _config: Config):
         train_sampler.set_epoch(epoch)
         model.train()
         mean_loss = torch.zeros(1).to(rank)
+        if rank == 0:
+            predict_list = []
+            label_list = []
         for step, batch_data in enumerate(train_loader):
             for key in batch_data.keys():
                 batch_data[key] = batch_data[key].to(rank)
@@ -126,6 +130,12 @@ def train(rank, word_size, _config: Config):
 
             loss = outputs.loss / _config.accum_steps
             mean_loss = (mean_loss * step + loss.detach()) / (step + 1)
+
+            if rank == 0:
+                labels = batch_data['labels']
+                _, predicts = outputs.logits.max(axis=-1)
+                predict_list += predicts[labels != _config.ignore_index].cpu().tolist()
+                label_list += labels[labels != _config.ignore_index].cpu().tolist()
 
             loss.backward()
 
@@ -137,11 +147,15 @@ def train(rank, word_size, _config: Config):
 
                 if rank == 0:
                     if not (global_step + 1) % _config.show_results_times:
+                        acc = accuracy_score(predict_list, label_list)
                         logger.info(
-                            'Step: {:>10} ---------- MeanLoss: {:>20.15f}'.format(step, mean_loss.item()))
+                            'Step: {:>10} ---------- MeanLoss: {:>20.15f}'.format(step+1, mean_loss.item()))
+                        logger.info(
+                            'Step: {:>10} ---------- Acc     : {:>20.15f}'.format(step+1, acc * 100))
                         tb_writer.add_scalar('mean_loss', mean_loss.item(), global_step)
                         tb_writer.add_scalar('loss', loss.item(), global_step)
                         tb_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
+                        tb_writer.add_scalar('accuracy', acc * 100, global_step)
 
                 if (global_step + 1) % _config.model_save_steps == 0:
                     if rank == 0:
