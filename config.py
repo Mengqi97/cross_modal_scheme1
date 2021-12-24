@@ -69,9 +69,11 @@ class Config:
 
         # 训练参数
         self.max_seq_len = 256
+        self.ignore_index = -100
         self.model_save_steps = 1000
 
         self.mlm_prob = 0.15
+        self.max_prediction_per_seq = round(self.max_seq_len * self.mlm_prob)
         self.mlm_replace_mask_prob = 0.8
         self.mlm_replace_random_prob = 0.1
         self.drug_name_replace_prob = drug_name_replace_prob

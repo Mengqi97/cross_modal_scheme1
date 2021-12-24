@@ -39,6 +39,8 @@ class BaseUp:
         self.max_seq_len = _config.max_seq_len
         self.mode = _config.mode
         self.data = pd.read_csv(data_path).dropna()
+        self.ignore_index = _config.ignore_index
+        self.max_predictions_per_seq = _config.max_prediction_per_seq
 
         if 'default' == _config.tokenizer_txt_type:
             if _config.bert_dir:
@@ -80,13 +82,18 @@ class MLMUp(BaseUp):
         del _config
 
     @staticmethod
-    def convert_data(series: pd.Series, self, mode):
+    def convert_data(series: pd.Series, self, mode, ignore_index):
         """
         处理读入数据，输出tokenizer后的输入数据与样本标签。
         Args:
           series (:obj:`pd.Series`):
             DataFrame的行
-          self
+          self:
+            pass
+          mode:
+            是否已经tokenize过
+          ignore_index:
+            label中的非mask的token的id
         Returns:
           tokenized (:obj:`List[int]`):
             MLM任务的标签id序列，未对齐
@@ -114,36 +121,51 @@ class MLMUp(BaseUp):
             abstract_tokenized = json.loads(series['tokenized_txt'])
 
         # 将'[SMI]'的位置替换为对应的分子式的ID序列，并且概率的将token替换为'[MASK]'对应的ID。
-        tokenized = []
-        tokenized_mlm = []
-        for token_id in abstract_tokenized:
-            if token_id == smi_token_id:
-                for smi_id in smi_tokenized:
-                    if random.random() <= mlm_prob:
-                        tmp_replace_prob = random.random()
-                        if tmp_replace_prob <= mlm_replace_mask_prob:
-                            tokenized_mlm.append(mask_token_id)
-                        elif tmp_replace_prob <= mlm_replace_random_prob:
-                            tokenized_mlm.append(random.randint(0, len_of_tokenizer - 1))
+        smi_token_num = abstract_tokenized.count(smi_token_id)
+        abstract_txt_len = len(abstract_tokenized) - smi_token_num
+        abstract_smi_len = len(smi_tokenized)
+        abstract_len = abstract_txt_len + abstract_smi_len * smi_token_num
+        masked_txt_num = round(abstract_txt_len * mlm_prob)
+        masked_smi_num = [round(abstract_smi_len * mlm_prob) for _ in range(smi_token_num)]
+        selected_pos = []
+        tokenized_label = [ignore_index for _ in range(abstract_len)]
+        tokenized_mlm = [0 for _ in range(abstract_len)]
+        while masked_txt_num or [num for num in masked_smi_num if num > 0]:
+            token_pos = 0
+            nth_smi = 0
+            for token_id in abstract_tokenized:
+                if token_id == smi_token_id:
+                    for smi_id in smi_tokenized:
+                        if masked_smi_num[nth_smi] and (token_pos not in selected_pos) and (random.random() <= mlm_prob):
+                            masked_smi_num[nth_smi] -= 1
+                            selected_pos.append(token_pos)
+                            tmp_replace_prob = random.random()
+                            if tmp_replace_prob <= mlm_replace_mask_prob:
+                                tokenized_mlm[token_pos] = mask_token_id
+                            elif tmp_replace_prob <= mlm_replace_random_prob:
+                                tokenized_mlm[token_pos] = random.randint(0, len_of_tokenizer - 1)
+                            else:
+                                tokenized_mlm[token_pos] = smi_id
+                            tokenized_label[token_pos] = smi_id
                         else:
-                            tokenized_mlm.append(smi_id)
+                            tokenized_mlm[token_pos] = smi_id
+                        token_pos += 1
+                    continue
+                if masked_txt_num and (token_pos not in selected_pos) and (random.random() <= mlm_prob):
+                    masked_txt_num -= 1
+                    selected_pos.append(token_pos)
+                    tmp_replace_prob = random.random()
+                    if tmp_replace_prob <= mlm_replace_mask_prob:
+                        tokenized_mlm[token_pos] = mask_token_id
+                    elif tmp_replace_prob <= mlm_replace_random_prob:
+                        tokenized_mlm[token_pos] = random.randint(0, len_of_tokenizer - 1)
                     else:
-                        tokenized_mlm.append(smi_id)
-                    tokenized.append(smi_id)
-                continue
-            if random.random() <= mlm_prob:
-                tmp_replace_prob = random.random()
-                if tmp_replace_prob <= mlm_replace_mask_prob:
-                    tokenized_mlm.append(mask_token_id)
-                elif tmp_replace_prob <= mlm_replace_random_prob:
-                    tokenized_mlm.append(random.randint(0, len_of_tokenizer - 1))
+                        tokenized_mlm[token_pos] = token_id
+                    tokenized_label[token_pos] = token_id
                 else:
-                    tokenized_mlm.append(token_id)
-            else:
-                tokenized_mlm.append(token_id)
-            tokenized.append(token_id)
-
-        return tokenized, tokenized_mlm
+                    tokenized_mlm[token_pos] = token_id
+                token_pos += 1
+        return tokenized_label, tokenized_mlm
 
     def convert_dataset(self):
         """
@@ -159,7 +181,11 @@ class MLMUp(BaseUp):
         apply_mode = 'raw'
         if 'tokenized_smi' in columns_list:
             apply_mode = 'tokenized'
-        tmp_data[['tokenized', 'tokenized_mlm']] = self.data.apply(self.convert_data, axis=1, args=(self, apply_mode),
+        tmp_data[['tokenized', 'tokenized_mlm']] = self.data.apply(self.convert_data,
+                                                                   axis=1,
+                                                                   args=(self,
+                                                                         apply_mode,
+                                                                         self.ignore_index),
                                                                    result_type='expand')
         tmp_tokenized_list = tmp_data['tokenized'].tolist()
         tmp_tokenized_mlm_list = tmp_data['tokenized_mlm'].tolist()
