@@ -132,9 +132,10 @@ class MLMUp(BaseUp):
         tokenized_mlm = [0 for _ in range(abstract_len)]
         while masked_txt_num or [num for num in masked_smi_num if num > 0]:
             token_pos = 0
-            nth_smi = 0
+            nth_smi = -1
             for token_id in abstract_tokenized:
                 if token_id == smi_token_id:
+                    nth_smi += 1
                     for smi_id in smi_tokenized:
                         if masked_smi_num[nth_smi] and (token_pos not in selected_pos) and (random.random() <= mlm_prob):
                             masked_smi_num[nth_smi] -= 1
