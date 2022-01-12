@@ -96,7 +96,7 @@ def train(rank, word_size, _config: Config):
     # 计算训练的总次数
     per_epoch_items = len(train_loader)
     total_train_items = _config.pre_train_epochs * per_epoch_items
-    optimizer, scheduler = build_optimizer_and_scheduler(_config, model, total_train_items)
+    optimizer, scheduler = build_optimizer_and_scheduler(_config, model, total_train_items//_config.accum_steps)
 
     if rank == 0:
         logger.info('**********4-1 初始化训练参数**********')
