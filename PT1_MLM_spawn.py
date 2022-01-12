@@ -164,8 +164,14 @@ def train(rank, word_size, _config: Config):
                         logger.info(os.system("nvidia-smi"))
                     if not (global_step + 1) % _config.show_results_times:
                         acc = accuracy_score(predict_list, label_list)
-                        acc_smi = accuracy_score(predict_smi_list, label_smi_list)
-                        acc_txt = accuracy_score(predict_txt_list, label_txt_list)
+                        if label_smi_list:
+                            acc_smi = accuracy_score(predict_smi_list, label_smi_list)
+                        else:
+                            acc_smi = 0
+                        if label_txt_list:
+                            acc_txt = accuracy_score(predict_txt_list, label_txt_list)
+                        else:
+                            acc_txt = 0
                         logger.info(
                             'Step: {:>10} ---------- MeanLoss: {:>20.15f}'.format(step+1, mean_loss.item()))
                         logger.info(
@@ -180,7 +186,7 @@ def train(rank, word_size, _config: Config):
                         tb_writer.add_scalar('accuracy', acc * 100, global_step)
                         tb_writer.add_scalar('accuracy_smi', acc_smi * 100, global_step)
                         tb_writer.add_scalar('accuracy_txt', acc_txt * 100, global_step)
-                        tb_writer.add_scalar('ratio_smi_txt', round(len(predict_smi_list)/len(predict_txt_list), 4), global_step)
+                        tb_writer.add_scalar('ratio_smi_txt', round(len(predict_smi_list)/len(predict_txt_list), 4) if len(predict_txt_list)>0 else 0, global_step)
 
                 if (global_step + 1) % _config.model_save_steps == 0 or global_step == total_train_items:
                     if rank == 0:

@@ -64,7 +64,7 @@ class Config:
             self.train_epochs = 40
             self.show_results_times = 10
 
-            self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_single_gpu_mid_0.6.csv'
+            self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_single_gpu_mid_0.0.csv'
 
 
         # 训练参数
@@ -141,6 +141,7 @@ class Config:
         return {
             'pre_train_batch_size' : self.pre_train_batch_size,
             'pre_train_epochs' : self.pre_train_epochs,
+            'model_save_steps': self.model_save_steps,
             'pre_train_corpus_file_path' : self.pre_train_corpus_file_path,
             'bert_name' : self.bert_name,
         }
