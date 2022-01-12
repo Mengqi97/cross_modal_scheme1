@@ -62,15 +62,15 @@ class Config:
             self.pre_train_epochs = 4
             self.train_batch_size = 16
             self.train_epochs = 40
-            self.show_results_times = 10
+            self.show_results_times = 1
 
-            self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_single_gpu_mid_0.0.csv'
+            self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_smi.csv'
 
 
         # 训练参数
         self.max_seq_len = 128
         self.ignore_index = -100
-        self.model_save_steps = 2000
+        self.model_save_steps = 2000 // accum_steps
 
         self.mlm_prob = 0.15
         self.max_prediction_per_seq = round(self.max_seq_len * self.mlm_prob)

@@ -188,17 +188,23 @@ def train(rank, word_size, _config: Config):
                         tb_writer.add_scalar('accuracy_txt', acc_txt * 100, global_step)
                         tb_writer.add_scalar('ratio_smi_txt', round(len(predict_smi_list)/len(predict_txt_list), 4) if len(predict_txt_list)>0 else 0, global_step)
 
-                if (global_step + 1) % _config.model_save_steps == 0 or global_step == total_train_items:
-                    if rank == 0:
-                        time_end = time.time()
-                        logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format(global_step+1, time_end-time_start))
-                        logger.info('**********6-1 模型保存**********')
-                        save_model_ddp(_config, model, global_step=global_step+1)
-                    dist.barrier()
+                # if (global_step + 1) % _config.model_save_steps == 0 or global_step == total_train_items:
+                #     if rank == 0:
+                #         time_end = time.time()
+                #         logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format((global_step+1)*_config.accum_steps, time_end-time_start))
+                #         logger.info('**********6-1 模型保存**********')
+                #         save_model_ddp(_config, model, global_step=(global_step+1)*_config.accum_steps)
+                #     dist.barrier()
 
         if rank == 0:
             logger.info('Epoch: {:>5} ---------- MeanLoss: {:>20.15f}'.format(epoch+1, mean_loss.item()))
+            time_end = time.time()
+            logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format((global_step+1)*_config.accum_steps, time_end-time_start))
+            logger.info('**********6-1 模型保存**********')
+            save_model_ddp(_config, model, global_step=epoch+1)
             logger.info('**********5-2 动态掩模**********')
+        dist.barrier()
+
         train_dataset_up = train_dataset_uper.convert_dataset()
         train_dataset = MLMDataset(train_dataset_up, _config=_config)
         train_sampler = DistributedSampler(train_dataset)
@@ -212,6 +218,7 @@ def train(rank, word_size, _config: Config):
     empty_cache()
     if rank == 0:
         logger.info('**********7 训练结束**********')
+        tb_writer.close()
     cleanup()
 
 
