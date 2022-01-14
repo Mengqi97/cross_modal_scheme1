@@ -5,7 +5,7 @@ import pickle
 import json
 
 from config import Config
-from utils.functions import SMILES_SPE_Tokenizer
+from utils.functions import SMILES_SPE_Tokenizer, flat_list_rec
 
 import torch
 import nltk
@@ -128,8 +128,10 @@ class MLMUp(BaseUp):
         masked_txt_num = round(abstract_txt_len * mlm_prob)
         masked_smi_num = [round(abstract_smi_len * mlm_prob) for _ in range(smi_token_num)]
         selected_pos = []
-        tokenized_label = [ignore_index for _ in range(abstract_len)]
-        tokenized_mlm = [-1 for _ in range(abstract_len)]
+        tokenized_label = [ignore_index] * abstract_len
+        tokenized_mlm = [smi_tokenized if ele == smi_token_id else ele for ele in abstract_tokenized]
+        tokenized_mlm = flat_list_rec(tokenized_mlm)
+        assert len(tokenized_mlm) == abstract_len, '掩模过程出错'
         while masked_txt_num or [num for num in masked_smi_num if num > 0]:
             token_pos = 0
             nth_smi = -1
@@ -148,9 +150,6 @@ class MLMUp(BaseUp):
                             else:
                                 tokenized_mlm[token_pos] = smi_id
                             tokenized_label[token_pos] = smi_id
-                        else:
-                            if tokenized_mlm[token_pos] == -1:
-                                tokenized_mlm[token_pos] = smi_id
                         token_pos += 1
                     continue
                 if masked_txt_num and (token_pos not in selected_pos) and (random.random() <= mlm_prob):
@@ -164,9 +163,6 @@ class MLMUp(BaseUp):
                     else:
                         tokenized_mlm[token_pos] = token_id
                     tokenized_label[token_pos] = token_id
-                else:
-                    if tokenized_mlm[token_pos] == -1:
-                        tokenized_mlm[token_pos] = token_id
                 token_pos += 1
         return tokenized_label, tokenized_mlm
 

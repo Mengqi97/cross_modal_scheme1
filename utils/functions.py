@@ -426,3 +426,24 @@ def save_model_ddp(_config: Config, model, global_step=-1):
     torch.save(model.state_dict(), save_model_path)
 
     return save_model_path
+
+
+def flat_list_rec(the_list, res=None):
+    """
+    铺平嵌套list
+    参考：https://blog.csdn.net/sinat_38682860/article/details/102567070
+    Args:
+        the_list: 嵌套list
+        res: 不用传入
+
+    Returns: 铺平后的list
+
+    """
+    if res is None:
+        res = []
+    for item in the_list:
+        if isinstance(item, list):
+            flat_list_rec(item, res)
+        else:
+            res.append(item)
+    return res
