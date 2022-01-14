@@ -191,15 +191,15 @@ def train(rank, word_size, _config: Config):
                 # if (global_step + 1) % _config.model_save_steps == 0 or global_step + 1 == total_train_items:
                 #     if rank == 0:
                 #         time_end = time.time()
-                #         logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format((global_step+1)*_config.accum_steps, time_end-time_start))
+                #         logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format((global_step+1)*_config.gpu_num, time_end-time_start))
                 #         logger.info('**********6-1 模型保存**********')
-                #         save_model_ddp(_config, model, global_step=(global_step+1)*_config.accum_steps)
+                #         save_model_ddp(_config, model, global_step=(global_step+1)*_config.gpu_num)
                 #     dist.barrier()
 
         if (epoch+1) % 1 == 0:
             if rank == 0:
                 time_end = time.time()
-                logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format((global_step+1)*_config.accum_steps, time_end-time_start))
+                logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format((global_step+1)*_config.gpu_num, time_end-time_start))
                 logger.info('**********6-1 模型保存**********')
                 save_model_ddp(_config, model, global_step=epoch+1)
             dist.barrier()
