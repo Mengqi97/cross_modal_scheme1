@@ -101,6 +101,7 @@ def train(rank, word_size, _config: Config):
     if rank == 0:
         logger.info('**********4-1 初始化训练参数**********')
     global_step = 0
+    gpu_num = _config.gpu_num
     # epoch_loss = []
     if rank == 0:
         logger.info('**********4-2 显示训练参数**********')
@@ -154,15 +155,15 @@ def train(rank, word_size, _config: Config):
             loss.backward()
 
             global_step += 1
-            if (global_step + 1) % _config.accum_steps == 0 or (global_step + 1) == total_train_items:
+            if global_step % _config.accum_steps == 0 or global_step == total_train_items:
                 optimizer.step()
                 optimizer.zero_grad()
                 scheduler.step()
                 
                 if rank == 0:
-                    if global_step+1 == _config.accum_steps:
+                    if global_step == _config.accum_steps:
                         logger.info(os.system("nvidia-smi"))
-                    if not (global_step + 1) % _config.show_results_times:
+                    if not (global_step % _config.show_results_times):
                         acc = accuracy_score(predict_list, label_list)
                         if label_smi_list:
                             acc_smi = accuracy_score(predict_smi_list, label_smi_list)
@@ -180,26 +181,27 @@ def train(rank, word_size, _config: Config):
                             'Step: {:>10} ---------- SMI Acc : {:>20.15f}'.format(step+1, acc_smi * 100))
                         logger.info(
                             'Step: {:>10} ---------- TXT Acc : {:>20.15f}'.format(step+1, acc_txt * 100))
-                        tb_writer.add_scalar('mean_loss', mean_loss.item(), global_step)
-                        tb_writer.add_scalar('loss', loss.item(), global_step)
-                        tb_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
-                        tb_writer.add_scalar('accuracy', acc * 100, global_step)
-                        tb_writer.add_scalar('accuracy_smi', acc_smi * 100, global_step)
-                        tb_writer.add_scalar('accuracy_txt', acc_txt * 100, global_step)
-                        tb_writer.add_scalar('ratio_smi_txt', round(len(predict_smi_list)/len(predict_txt_list), 4) if len(predict_txt_list)>0 else 0, global_step)
+                        write_step = global_step * gpu_num
+                        tb_writer.add_scalar('mean_loss', mean_loss.item(), write_step)
+                        tb_writer.add_scalar('loss', loss.item(), write_step)
+                        tb_writer.add_scalar('lr', optimizer.param_groups[0]['lr'], write_step)
+                        tb_writer.add_scalar('accuracy', acc * 100, write_step)
+                        tb_writer.add_scalar('accuracy_smi', acc_smi * 100, write_step)
+                        tb_writer.add_scalar('accuracy_txt', acc_txt * 100, write_step)
+                        tb_writer.add_scalar('ratio_smi_txt', round(len(predict_smi_list)/len(predict_txt_list), 4) if len(predict_txt_list)>0 else 0, write_step)
 
-                # if (global_step + 1) % _config.model_save_steps == 0 or global_step + 1 == total_train_items:
+                # if global_step % _config.model_save_steps == 0 or global_step == total_train_items:
                 #     if rank == 0:
                 #         time_end = time.time()
-                #         logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format((global_step+1)*_config.gpu_num, time_end-time_start))
+                #         logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format(global_step*gpu_num, time_end-time_start))
                 #         logger.info('**********6-1 模型保存**********')
-                #         save_model_ddp(_config, model, global_step=(global_step+1)*_config.gpu_num)
+                #         save_model_ddp(_config, model, global_step=global_step*gpu_num)
                 #     dist.barrier()
 
         if (epoch+1) % 1 == 0:
             if rank == 0:
                 time_end = time.time()
-                logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format((global_step+1)*_config.gpu_num, time_end-time_start))
+                logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format(global_step*gpu_num, time_end-time_start))
                 logger.info('**********6-1 模型保存**********')
                 save_model_ddp(_config, model, global_step=epoch+1)
             dist.barrier()
