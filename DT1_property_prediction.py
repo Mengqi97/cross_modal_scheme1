@@ -9,6 +9,7 @@ from utils.validators import ClintoxValidator
 from utils.data_handler import ClintoxUp, ClintoxDataset
 from utils.functions import load_model_and_parallel, build_optimizer_and_scheduler, save_model
 
+import torch
 from loguru import logger
 from torch.utils.data import DataLoader, RandomSampler
 from torch.cuda import get_device_name
@@ -21,20 +22,23 @@ str_time = time.strftime('[%Y-%m-%d]%H-%M')
 # logger.add(os.path.join(base_dir, 'log', f'{str_time}.log'), encoding='utf-8')
 
 
-def train(_config: Config):
+def train(_config: Config, dt_dict):
     tb_path = os.path.join(base_dir, 'runs-dt', time.strftime("%Y-%m-%d=%H-%M", time.localtime()))
     logger.info(f'TensorBoard save path: {tb_path}')
     tb_writer = SummaryWriter(tb_path)
+
+    task_type = _config.task_type
+
     logger.info('**********1-1 构建数据集**********')
-    train_dataset = ClintoxDataset(
-        ClintoxUp(
+    train_dataset = dt_dict[task_type]['dataset'](
+        dt_dict[task_type]['upper'](
             os.path.join(base_dir, _config.data_dir, _config.downstream_tasks_corpus_file[_config.task_type]['train']),
             _config,
         ).convert_dataset(),
         _config,
     )
-    valid_dataset = ClintoxDataset(
-        ClintoxUp(
+    valid_dataset = dt_dict[task_type]['dataset'](
+        dt_dict[task_type]['upper'](
             os.path.join(base_dir, _config.data_dir, _config.downstream_tasks_corpus_file[_config.task_type]['valid']),
             _config,
         ).convert_dataset(),
@@ -52,7 +56,7 @@ def train(_config: Config):
                               num_workers=_config.num_workers)
 
     logger.info('**********2-1 模型初始化**********')
-    model = ClintoxModel(_config=_config)
+    model = dt_dict[task_type]['model'](_config=_config, task_num=dt_dict[task_type]['task_num'])
     model, device = load_model_and_parallel(
         model,
         _config.gpu_ids,
@@ -69,7 +73,7 @@ def train(_config: Config):
     if hasattr(model, 'module'):
         use_n_gpus = True
 
-    validator = ClintoxValidator(valid_loader, device)
+    validator = dt_dict[task_type]['validator'](valid_loader, device)
     try:
         logger.info(get_device_name(device))
     except:
@@ -110,10 +114,18 @@ def train(_config: Config):
                 batch_data[key] = batch_data[key].to(device)
             out, loss = model(**batch_data)
 
+            if out.shape != batch_data['labels'].shape:
+                batch_data['labels'] = torch.squeeze(batch_data['labels'])
+            is_valid = batch_data['labels'] ** 2 > 0
+            loss = torch.where(is_valid, loss, torch.zeros(loss.shape).to(loss.device).to(loss.dtype))
+            loss = torch.sum(loss) / torch.sum(is_valid)
+
             optimizer.zero_grad()
             if use_n_gpus:
                 loss = loss.mean()
             loss.backward()
+            if global_step == 0:
+                logger.info(os.system("nvidia-smi"))
             optimizer.step()
             scheduler.step()
 
@@ -124,7 +136,7 @@ def train(_config: Config):
                 if global_step % 5 == 0:
                     break
 
-            if step + 1 % items_show_results == 0:
+            if (step+1) % items_show_results == 0:
                 tb_writer.add_scalar('loss', loss.item(), global_step)
                 logger.info(
                     'Step: {:>5} ---------- Loss: {:>20.15f}'.format(step + 1, loss.item()))
@@ -156,5 +168,15 @@ if __name__ == '__main__':
         gpu_nums=args.gpu_nums,
     )
 
-    train(config)
+    dt_dict={
+        'DT1': {
+            'upper': ClintoxUp,
+            'dataset': ClintoxDataset,
+            'model': ClintoxModel,
+            'task_num': 1,
+            'validator': ClintoxValidator,
+        }
+    }
+
+    train(config, dt_dict)
     logger.info('**********结束训练**********')

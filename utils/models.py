@@ -1,6 +1,7 @@
 import os
 import sys
 
+import torch
 import torch.nn as nn
 from transformers import BertModel
 from loguru import logger
@@ -37,7 +38,8 @@ class BaseModel(nn.Module):
 
 class ClintoxModel(BaseModel):
     def __init__(self,
-                 _config, ):
+                 _config,
+                 task_num):
 
         super(ClintoxModel, self).__init__(_config)
 
@@ -45,23 +47,24 @@ class ClintoxModel(BaseModel):
         self.bert.pooler = None
         self.bert.resize_token_embeddings(_config.len_of_tokenizer)
         out_dims = self.bert_config.hidden_size
-        mid_linear_dims = _config.mid_linear_dims
+        # mid_linear_dims = _config.mid_linear_dims
 
         # 下游任务模型结构构建
-        self.mid_linear = nn.Sequential(
-            nn.Linear(out_dims, mid_linear_dims),
-            nn.ReLU(),
-            nn.Dropout(_config.dropout_prob)
-        )
-        self.classifier = nn.Linear(mid_linear_dims, 1)
+        # self.mid_linear = nn.Sequential(
+        #     nn.Linear(out_dims, mid_linear_dims),
+        #     nn.ReLU(),
+        #     nn.Dropout(_config.dropout_prob)
+        # )
+        # self.classifier = nn.Linear(mid_linear_dims, 1)
+        self.classifier = nn.Linear(out_dims, task_num)
         self.activation = nn.Sigmoid()
         if 'train' == self.mode:
-            self.criterion = nn.BCELoss()
+            self.criterion = nn.BCELoss(reduction='none')
         else:
             self.criterion = None
 
         # 模型初始化
-        init_blocks = [self.mid_linear, self.classifier]
+        init_blocks = [self.classifier]
         self._init_weights(init_blocks, initializer_range=self.bert_config.initializer_range)
 
     def forward(self,
@@ -76,11 +79,15 @@ class ClintoxModel(BaseModel):
         )
 
         out = out.last_hidden_state[:, 0, :]  # 取cls对应的embedding
-        out = self.mid_linear(out)
+        # out = self.mid_linear(out)
         out = self.activation(self.classifier(out))
 
         if self.criterion:
+            if out.shape != labels.shape:
+                labels = torch.squeeze(labels)
+
             loss = self.criterion(out, labels)
+            # loss = self.criterion(out, (labels+1)/2)
 
             return out, loss
 
