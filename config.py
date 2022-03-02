@@ -14,6 +14,7 @@ class Config:
         self.len_of_tokenizer = 28895 + 3117 + 1
 
         # 训练规模
+        self.gpu_num = gpu_nums
         self.scale = scale.lower()
         self.use_pre_converted_data = use_pre_converted_data
         self.num_workers = num_workers
@@ -62,15 +63,15 @@ class Config:
             self.pre_train_epochs = 4
             self.train_batch_size = 16
             self.train_epochs = 40
-            self.show_results_times = 1
+            self.show_results_times = 10
 
-            self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_smi.csv'
+            self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_single_gpu_mid_0.6.csv'
 
 
         # 训练参数
         self.max_seq_len = 128
         self.ignore_index = -100
-        self.model_save_steps = 2000 // accum_steps
+        self.model_save_steps = 2000
 
         self.mlm_prob = 0.15
         self.max_prediction_per_seq = round(self.max_seq_len * self.mlm_prob)
