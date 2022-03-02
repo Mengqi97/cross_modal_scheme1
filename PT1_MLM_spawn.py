@@ -142,7 +142,7 @@ def train(rank, word_size, _config: Config):
             if rank == 0:
                 labels = batch_data['labels']
                 _, predicts = outputs.logits.max(axis=-1)
-                masked_token_mask = (labels != _config.ignore_index) & (labels != 2) & (labels != 3)
+                masked_token_mask = labels != _config.ignore_index
                 smi_token_mask = labels > _config.smi_token_id
                 predict_list += predicts[masked_token_mask].cpu().tolist()
                 predict_smi_list += predicts[masked_token_mask & smi_token_mask].cpu().tolist()
