@@ -22,7 +22,7 @@ str_time = time.strftime('[%Y-%m-%d]%H-%M')
 
 
 def train(_config: Config):
-    tb_path = os.path.join(base_dir, 'runs', time.strftime("%Y-%m-%d=%H-%M", time.localtime()))
+    tb_path = os.path.join(base_dir, 'runs-dt', time.strftime("%Y-%m-%d=%H-%M", time.localtime()))
     logger.info(f'TensorBoard save path: {tb_path}')
     tb_writer = SummaryWriter(tb_path)
     logger.info('**********1-1 构建数据集**********')
@@ -60,7 +60,7 @@ def train(_config: Config):
             base_dir,
             _config.out_model_dir,
             _config.pre_train_task,
-            'best/model.pt'
+            'best/model_ddp.pt'
         ),
         False
     )

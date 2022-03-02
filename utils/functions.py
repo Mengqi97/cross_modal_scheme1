@@ -424,6 +424,7 @@ def save_model_ddp(_config: Config, model, global_step=-1):
     )
 
     torch.save(model.state_dict(), save_model_path)
+    logger.info(f'model save path: {save_model_path}')
 
     return save_model_path
 

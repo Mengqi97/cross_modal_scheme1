@@ -9,4 +9,5 @@
 *.zip
 .DS_Store
 /runs
+/runs-dt
 /utils/.ipynb_checkpoints
