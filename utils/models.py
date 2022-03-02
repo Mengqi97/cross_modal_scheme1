@@ -17,10 +17,10 @@ class BaseModel(nn.Module):
         self.mode = _config.mode
         if _config.bert_dir:
             bert_dir = os.path.join(base_dir, _config.bert_dir)
-            self.bert_module = BertModel.from_pretrained(bert_dir)
+            self.bert = BertModel.from_pretrained(bert_dir)
         else:
-            self.bert_module = BertModel.from_pretrained(_config.bert_name)
-        self.bert_config = self.bert_module.config
+            self.bert = BertModel.from_pretrained(_config.bert_name)
+        self.bert_config = self.bert.config
 
     @staticmethod
     def _init_weights(blocks, **kwargs):
@@ -42,7 +42,8 @@ class ClintoxModel(BaseModel):
         super(ClintoxModel, self).__init__(_config)
 
         # 扩充词表故需要重定义
-        self.bert_module.resize_token_embeddings(_config.len_of_tokenizer)
+        self.bert.pooler = None
+        self.bert.resize_token_embeddings(_config.len_of_tokenizer)
         out_dims = self.bert_config.hidden_size
         mid_linear_dims = _config.mid_linear_dims
 
@@ -68,7 +69,7 @@ class ClintoxModel(BaseModel):
                 attention_mask,
                 token_type_ids,
                 labels):
-        out = self.bert_module(
+        out = self.bert(
             input_ids=input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids

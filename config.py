@@ -2,7 +2,7 @@ class Config:
     def __init__(self,
                  task_type,
                  mode,
-                 scale, 
+                 scale,
                  use_pre_converted_data,
                  num_workers,
                  gpu_nums,
@@ -20,7 +20,7 @@ class Config:
         self.num_workers = num_workers
         if 'cpu_mini' == self.scale:
             self.gpu_ids = '-1'
-            
+
             self.pin_memory = False
             self.pre_train_batch_size = 1
             self.pre_train_epochs = 1
@@ -32,13 +32,13 @@ class Config:
 
         elif 'gpu_mini' == self.scale:
             self.gpu_ids = '0'
-            
+
             self.pin_memory = False
             self.pre_train_batch_size = 1
             self.pre_train_epochs = 30
             self.train_batch_size = 8
             self.train_epochs = 40
-            self.show_results_times = 2
+            self.show_results_times = 10
 
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
         elif 'gpu_mid' == self.scale:
@@ -48,8 +48,8 @@ class Config:
             self.pre_train_batch_size = 8
             self.pre_train_epochs = 10
             self.train_batch_size = 16
-            self.train_epochs = 40
-            self.show_results_times = 100
+            self.train_epochs = 20
+            self.show_results_times = 10
 
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_big.csv'
 
@@ -67,7 +67,6 @@ class Config:
 
             self.pre_train_corpus_file_path = 'preprocess/tokenized_data_only_single_gpu_mid_0.6.csv'
 
-
         # 训练参数
         self.max_seq_len = 128
         self.ignore_index = -100
@@ -82,8 +81,8 @@ class Config:
         self.mid_linear_dims = 128
         self.dropout_prob = 0.1
 
-        self.lr = 2e-5 * gpu_nums
-        self.other_lr = 2e-5 * gpu_nums
+        self.lr = 2e-5 * gpu_nums if gpu_nums else 2e-5
+        self.other_lr = 2e-5 * gpu_nums if gpu_nums else 2e-5
         self.weight_decay = 0.01
         self.other_weight_decay = 0.01
         self.adam_epsilon = 1e-8
@@ -96,7 +95,7 @@ class Config:
         self.spe_file = 'SPE_ChEMBL.txt'
         self.spe_voc_file = 'spe_voc.txt'
         self.converted_pre_train_courpus_path = 'pre_train/converted_pre_train_corpus_bert_raw.pkl'
-        
+
         self.downstream_tasks_corpus_file = {
             'DT1': {
                 'train': 'T1_clintox/clintox_train_data.csv',
@@ -104,7 +103,6 @@ class Config:
                 'test': 'T1_clintox/clintox_test_data.csv'
             },
         }
-
 
         # 类型选择
         self.tokenizer_txt_type = 'default'
@@ -114,35 +112,42 @@ class Config:
         self.mode = mode.lower()
         self.pre_train_task = 'MLM'
 
-
     def show_train_parameters(self):
-        return {
-            'data':{
-                'max_seq_len': self.max_seq_len,
-                'mlm_prob' : self.mlm_prob,
-                'drug_name_replace_prob' : self.drug_name_replace_prob,
-            },
-
-            'model':{
-                'mid_linear_dims' : self.mid_linear_dims,
-                'dropout_prob' : self.dropout_prob,
-            },
-
-            'train':{
-                'lr' : self.lr,
-                'other_lr' : self.other_lr,
-                'weight_decay' : self.weight_decay,
-                'other_weight_decay' : self.other_weight_decay,
-                'adam_epsilon' : self.adam_epsilon,
-                'warmup_proportion' : self.warmup_proportion,
+        if 'DT' in self.task_type:
+            param_dict = {
+                'data': {
+                    'task_type': self.task_type
+                },
             }
+        else:
+            param_dict = {
+                'data': {
+                    'max_seq_len': self.max_seq_len,
+                    'mlm_prob': self.mlm_prob,
+                    'drug_name_replace_prob': self.drug_name_replace_prob,
+                },
+            }
+
+        param_dict['model'] = {
+            'mid_linear_dims': self.mid_linear_dims,
+            'dropout_prob': self.dropout_prob,
         }
-    
+        param_dict['train'] = {
+            'lr': self.lr,
+            'other_lr': self.other_lr,
+            'weight_decay': self.weight_decay,
+            'other_weight_decay': self.other_weight_decay,
+            'adam_epsilon': self.adam_epsilon,
+            'warmup_proportion': self.warmup_proportion,
+        }
+
+        return param_dict
+
     def show_train_info(self):
         return {
-            'pre_train_batch_size' : self.pre_train_batch_size,
-            'pre_train_epochs' : self.pre_train_epochs,
+            'pre_train_batch_size': self.pre_train_batch_size,
+            'pre_train_epochs': self.pre_train_epochs,
             'model_save_steps': self.model_save_steps,
-            'pre_train_corpus_file_path' : self.pre_train_corpus_file_path,
-            'bert_name' : self.bert_name,
+            'pre_train_corpus_file_path': self.pre_train_corpus_file_path,
+            'bert_name': self.bert_name,
         }

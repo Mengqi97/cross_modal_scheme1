@@ -152,7 +152,9 @@ def train(rank, word_size, _config: Config):
                 predict_txt_list += predicts[masked_token_mask & (~smi_token_mask)].cpu().tolist()
                 label_list += labels[masked_token_mask].cpu().tolist()
                 label_smi_list += labels[masked_token_mask & smi_token_mask].cpu().tolist()
+                logger.info(label_smi_list)
                 label_txt_list += labels[masked_token_mask & (~smi_token_mask)].cpu().tolist()
+                logger.info(label_txt_list)
 
             loss.backward()
 
