@@ -98,9 +98,9 @@ class Config:
 
         self.downstream_tasks_corpus_file = {
             'DT1': {
-                'train': 'T1_clintox/clintox_train_data.csv',
-                'valid': 'T1_clintox/clintox_valid_data.csv',
-                'test': 'T1_clintox/clintox_test_data.csv'
+                'train': 'DT1/T1_clintox/train_clintox.csv',
+                'valid': 'DT1/T1_clintox/valid_clintox.csv',
+                'test': 'DT1/T1_clintox/test_clintox.csv'
             },
         }
 

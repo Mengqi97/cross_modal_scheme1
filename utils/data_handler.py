@@ -315,10 +315,10 @@ class ClintoxUp(BaseUp):
 
     @staticmethod
     def convert_data(series: pd.Series, self):
-        inputs = self.tokenizer_smi(series['ids'], padding='max_length', truncation=True, max_length=self.max_seq_len,
+        inputs = self.tokenizer_smi(series['smiles'], padding='max_length', truncation=True, max_length=self.max_seq_len,
                                     return_attention_mask=True, return_token_type_ids=True)
         if 'train' == self.mode:
-            labels = int(series['y1'])
+            labels = list(series[2:])
         else:
             labels = -1
 

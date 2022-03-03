@@ -86,8 +86,8 @@ class ClintoxModel(BaseModel):
             if out.shape != labels.shape:
                 labels = torch.squeeze(labels)
 
-            loss = self.criterion(out, labels)
-            # loss = self.criterion(out, (labels+1)/2)
+            # loss = self.criterion(out, labels)
+            loss = self.criterion(out, (labels+1)/2)
 
             return out, loss
 

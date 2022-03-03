@@ -84,7 +84,7 @@ def train(_config: Config, dt_dict):
     logger.info('**********3-2 优化器**********')
     # 计算训练的总次数
     per_epoch_items = len(train_loader)
-    total_train_items = _config.pre_train_epochs * per_epoch_items
+    total_train_items = _config.train_epochs * per_epoch_items
     optimizer, scheduler = build_optimizer_and_scheduler(_config, model, total_train_items)
 
     logger.info('**********4-1 初始化训练参数**********')
@@ -173,7 +173,7 @@ if __name__ == '__main__':
             'upper': ClintoxUp,
             'dataset': ClintoxDataset,
             'model': ClintoxModel,
-            'task_num': 1,
+            'task_num': 2,
             'validator': ClintoxValidator,
         }
     }

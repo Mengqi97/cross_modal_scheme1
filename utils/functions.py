@@ -289,7 +289,7 @@ def build_optimizer_and_scheduler(_config: Config, _model, total_train_items):
 
     for name, para in model_param:
         space = name.split('.')
-        if space[0] == 'bert_module':
+        if 'bert' in space[0]:
             bert_param_optimizer.append((name, para))
         else:
             other_param_optimizer.append((name, para))
