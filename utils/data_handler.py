@@ -293,7 +293,7 @@ class MLMUp(BaseUp):
         ), index=False)
 
 
-class ClintoxUp(BaseUp):
+class DT1Up(BaseUp):
     """
 
     Args:
@@ -308,7 +308,7 @@ class ClintoxUp(BaseUp):
     def __init__(self,
                  data_path,
                  _config):
-        super(ClintoxUp, self).__init__(
+        super(DT1Up, self).__init__(
             data_path=data_path,
             _config=_config,
         )
@@ -378,12 +378,12 @@ class MLMDataset(BaseDataset):
         return data
 
 
-class ClintoxDataset(BaseDataset):
+class DT1Dataset(BaseDataset):
     def __init__(self,
                  dataset,
                  _config,
                  additional_info=None):
-        super(ClintoxDataset, self).__init__(
+        super(DT1Dataset, self).__init__(
             dataset,
             _config.mode,
         )
@@ -410,8 +410,8 @@ if __name__ == '__main__':
 
     # 测试ClintoxUp函数
     config = Config('DT_1', 'train')
-    data_up = ClintoxUp(os.path.join(base_dir, config.data_dir, config.downstream_tasks_corpus_file['DT_1']['test']),
-                        config)
+    data_up = DT1Up(os.path.join(base_dir, config.data_dir, config.downstream_tasks_corpus_file['DT_1']['test']),
+                    config)
     dataset = data_up.convert_dataset()
     ic(dataset['input_ids'].shape)
     ic(dataset['labels'].shape)

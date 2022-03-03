@@ -36,12 +36,12 @@ class BaseModel(nn.Module):
                     nn.init.ones_(module.weight)
 
 
-class ClintoxModel(BaseModel):
+class DT1Model(BaseModel):
     def __init__(self,
                  _config,
                  task_num):
 
-        super(ClintoxModel, self).__init__(_config)
+        super(DT1Model, self).__init__(_config)
 
         # 扩充词表故需要重定义
         self.bert.pooler = None
@@ -84,7 +84,7 @@ class ClintoxModel(BaseModel):
 
         if self.criterion:
             if out.shape != labels.shape:
-                labels = torch.squeeze(labels)
+                labels = labels.squeeze(1)
 
             # loss = self.criterion(out, labels)
             loss = self.criterion(out, (labels+1)/2)

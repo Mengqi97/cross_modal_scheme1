@@ -4,9 +4,9 @@ import argparse
 import sys
 
 from config import Config
-from utils.models import ClintoxModel
-from utils.validators import ClintoxValidator
-from utils.data_handler import ClintoxUp, ClintoxDataset
+from utils.models import DT1Model
+from utils.validators import DT1Validator
+from utils.data_handler import DT1Up, DT1Dataset
 from utils.functions import load_model_and_parallel, build_optimizer_and_scheduler, save_model
 
 import torch
@@ -30,20 +30,28 @@ def train(_config: Config, dt_dict):
     task_type = _config.task_type
 
     logger.info('**********1-1 构建数据集**********')
-    train_dataset = dt_dict[task_type]['dataset'](
-        dt_dict[task_type]['upper'](
-            os.path.join(base_dir, _config.data_dir, _config.downstream_tasks_corpus_file[_config.task_type]['train']),
+    train_dataset = DT1Dataset(
+        DT1Up(
+            os.path.join(base_dir, _config.data_dir, _config.downstream_tasks_corpus_file[task_type]['train']),
             _config,
         ).convert_dataset(),
         _config,
     )
-    valid_dataset = dt_dict[task_type]['dataset'](
-        dt_dict[task_type]['upper'](
-            os.path.join(base_dir, _config.data_dir, _config.downstream_tasks_corpus_file[_config.task_type]['valid']),
+    valid_dataset = DT1Dataset(
+        DT1Up(
+            os.path.join(base_dir, _config.data_dir, _config.downstream_tasks_corpus_file[task_type]['valid']),
             _config,
         ).convert_dataset(),
         _config,
     )
+    test_dataset = DT1Dataset(
+        DT1Up(
+            os.path.join(base_dir, _config.data_dir, _config.downstream_tasks_corpus_file[task_type]['test']),
+            _config,
+        ).convert_dataset(),
+        _config,
+    )
+
 
     logger.info('**********1-2 数据集加载器初始化**********')
     train_loader = DataLoader(dataset=train_dataset,
@@ -54,9 +62,13 @@ def train(_config: Config, dt_dict):
                               batch_size=_config.train_batch_size,
                               shuffle=False,
                               num_workers=_config.num_workers)
+    test_loader = DataLoader(dataset=test_dataset,
+                              batch_size=_config.train_batch_size,
+                              shuffle=False,
+                              num_workers=_config.num_workers)
 
     logger.info('**********2-1 模型初始化**********')
-    model = dt_dict[task_type]['model'](_config=_config, task_num=dt_dict[task_type]['task_num'])
+    model = DT1Model(_config=_config, task_num=dt_dict[task_type])
     model, device = load_model_and_parallel(
         model,
         _config.gpu_ids,
@@ -73,7 +85,8 @@ def train(_config: Config, dt_dict):
     if hasattr(model, 'module'):
         use_n_gpus = True
 
-    validator = dt_dict[task_type]['validator'](valid_loader, device)
+    validator = DT1Validator(valid_loader, device)
+    tester = DT1Validator(test_loader, device)
     try:
         logger.info(get_device_name(device))
     except:
@@ -109,20 +122,23 @@ def train(_config: Config, dt_dict):
     logger.info('**********5-1 模型训练**********')
     for epoch in range(_config.train_epochs):
         model.train()
+        mean_loss = torch.zeros(1).to(device)
         for step, batch_data in enumerate(train_loader):
             for key in batch_data.keys():
                 batch_data[key] = batch_data[key].to(device)
             out, loss = model(**batch_data)
 
-            if out.shape != batch_data['labels'].shape:
-                batch_data['labels'] = torch.squeeze(batch_data['labels'])
-            is_valid = batch_data['labels'] ** 2 > 0
-            loss = torch.where(is_valid, loss, torch.zeros(loss.shape).to(loss.device).to(loss.dtype))
-            loss = torch.sum(loss) / torch.sum(is_valid)
-
             optimizer.zero_grad()
             if use_n_gpus:
                 loss = loss.mean()
+
+            if out.shape != batch_data['labels'].shape:
+                batch_data['labels'] = batch_data['labels'].squeeze(1)
+            is_valid = batch_data['labels'] ** 2 > 0
+            loss = torch.where(is_valid, loss, torch.zeros(loss.shape).to(loss.device).to(loss.dtype))
+            loss = torch.sum(loss) / torch.sum(is_valid)
+            mean_loss = (mean_loss * step + loss.detach()) / (step + 1)
+
             loss.backward()
             if global_step == 0:
                 logger.info(os.system("nvidia-smi"))
@@ -139,18 +155,23 @@ def train(_config: Config, dt_dict):
             if (step+1) % items_show_results == 0:
                 tb_writer.add_scalar('loss', loss.item(), global_step)
                 logger.info(
-                    'Step: {:>5} ---------- Loss: {:>20.15f}'.format(step + 1, loss.item()))
+                    'Step: {:>5} ---------- MeanLoss: {:>20.15f}'.format(step + 1, mean_loss.item()))
 
         acc, auc = validator(model)
+        acc_test, auc_test = tester(model)
         tb_writer.add_scalar('accuracy', acc, epoch+1)
-        tb_writer.add_scalar('roc_auc', auc, epoch+1)
+        tb_writer.add_scalar('roc_auc', auc, epoch + 1)
+        tb_writer.add_scalar('accuracy_test', acc_test, epoch+1)
+        tb_writer.add_scalar('roc_auc_test', auc_test, epoch+1)
         logger.info('Epoch: {:>5} ---------- Accuracy: {:>20.15f}'.format(epoch + 1, acc))
         logger.info('Epoch: {:>5} ---------- ROC_AUC:  {:>20.15f}'.format(epoch + 1, auc))
+        logger.info('Epoch: {:>5} ---------- Accuracy-Test: {:>20.15f}'.format(epoch + 1, acc_test))
+        logger.info('Epoch: {:>5} ---------- ROC_AUC-Test:  {:>20.15f}'.format(epoch + 1, auc_test))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--task_type', dest='task_type', default='DT1', type=str)
+    parser.add_argument('-t', '--task_type', dest='task_type', default='DT1-1', type=str)
     parser.add_argument('-m', '--mode', dest='mode', default='train', type=str)
     parser.add_argument('-s', '--scale', dest='scale', default='cpu_mini', type=str)
     parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default='0', type=int)
@@ -169,14 +190,16 @@ if __name__ == '__main__':
     )
 
     dt_dict={
-        'DT1': {
-            'upper': ClintoxUp,
-            'dataset': ClintoxDataset,
-            'model': ClintoxModel,
-            'task_num': 2,
-            'validator': ClintoxValidator,
-        }
+        'DT1-1': 2,
+        'DT1-2': 12,
+        'DT1-3': 1,
+        'DT1-4': 27,
+        'DT1-5': 1,
+        'DT1-6': 617,
+        'DT1-7': 17,
+        'DT1-8': 1,
     }
 
     train(config, dt_dict)
+    torch.cuda.empty_cache()
     logger.info('**********结束训练**********')
