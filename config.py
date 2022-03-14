@@ -141,7 +141,7 @@ class Config:
 
         # 类型选择
         self.tokenizer_txt_type = 'default'
-        self.tokenizer_smi_type = 'default'
+        self.tokenizer_smi_type = 'pubmedBERT'
         self.bert_name = 'microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract'
         self.task_type = task_type.upper()
         self.mode = mode.lower()
