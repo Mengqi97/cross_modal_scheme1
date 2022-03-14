@@ -53,6 +53,8 @@ class BaseUp:
             self.tokenizer_smi = SMILES_SPE_Tokenizer(
                 vocab_file=os.path.join(base_dir, _config.data_dir, _config.spe_voc_file),
                 spe_file=os.path.join(base_dir, _config.data_dir, _config.spe_file))
+        elif 'pubmedBERT' == _config.tokenizer_smi_type:
+            self.tokenizer_smi = self.tokenizer_txt
 
 
 class MLMUp(BaseUp):
