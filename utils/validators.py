@@ -27,21 +27,24 @@ class BaseValidator:
                 yield predicts, batch_data['labels']
 
 
-class ClintoxValidator(BaseValidator):
+class DT1Validator(BaseValidator):
     def __init__(self,
                  valid_loader: DataLoader,
                  device):
-        super(ClintoxValidator, self).__init__(valid_loader=valid_loader,
-                                               device=device)
+        super(DT1Validator, self).__init__(valid_loader=valid_loader,
+                                           device=device)
 
     def __call__(self, model):
         predict_list = []
         predict_score_list = []
         label_list = []
         for predicts, labels in self.model_out(model):
-            predict_list.extend([1 if ele[0] > 0.5 else 0 for ele in predicts.cpu().numpy()])
-            predict_score_list.extend([ele[0] for ele in predicts.cpu().numpy()])
-            label_list.extend([ele[0] for ele in labels.cpu().numpy()])
+            if predicts.shape != labels.shape:
+                labels = labels.squeeze(1)
+            is_valid = labels.reshape(-1) ** 2 > 0
+            predict_list.extend([1 if ele > 0.5 else 0 for ele in predicts.reshape(-1)[is_valid].cpu().numpy()])
+            predict_score_list.extend(predicts.reshape(-1)[is_valid].cpu().numpy())
+            label_list.extend(((labels.reshape(-1)+1)/2)[is_valid].cpu().numpy())
 
         return accuracy_score(predict_list, label_list), roc_auc_score(label_list, predict_score_list)
 

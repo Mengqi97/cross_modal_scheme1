@@ -2,12 +2,14 @@ import os
 import sys
 import collections
 import codecs
+import random
 from typing import List, Optional
 
 from config import Config
 
 import torch
 import torch.distributed as dist
+import numpy as np
 from torch.nn.parallel import DistributedDataParallel as DDP
 from SmilesPE.tokenizer import SPE_Tokenizer
 from transformers import PreTrainedTokenizer
@@ -289,7 +291,7 @@ def build_optimizer_and_scheduler(_config: Config, _model, total_train_items):
 
     for name, para in model_param:
         space = name.split('.')
-        if space[0] == 'bert_module':
+        if 'bert' in space[0]:
             bert_param_optimizer.append((name, para))
         else:
             other_param_optimizer.append((name, para))
@@ -448,3 +450,15 @@ def flat_list_rec(the_list, res=None):
         else:
             res.append(item)
     return res
+
+def set_seed(seed):
+    """
+    设置随机种子
+    :param seed:
+    :return:
+    """
+    random.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    torch.cuda.manual_seed_all(seed)
+

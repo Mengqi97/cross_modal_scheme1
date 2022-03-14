@@ -37,7 +37,7 @@ class Config:
             self.pre_train_batch_size = 1
             self.pre_train_epochs = 30
             self.train_batch_size = 8
-            self.train_epochs = 40
+            self.train_epochs = 1
             self.show_results_times = 10
 
             self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
@@ -97,10 +97,45 @@ class Config:
         self.converted_pre_train_courpus_path = 'pre_train/converted_pre_train_corpus_bert_raw.pkl'
 
         self.downstream_tasks_corpus_file = {
-            'DT1': {
-                'train': 'T1_clintox/clintox_train_data.csv',
-                'valid': 'T1_clintox/clintox_valid_data.csv',
-                'test': 'T1_clintox/clintox_test_data.csv'
+            'DT1-1': {
+                'train': 'DT1/T1_clintox/train_clintox.csv',
+                'valid': 'DT1/T1_clintox/valid_clintox.csv',
+                'test': 'DT1/T1_clintox/test_clintox.csv'
+            },
+            'DT1-2': {
+                'train': 'DT1/T2_tox21/train_tox21.csv',
+                'valid': 'DT1/T2_tox21/valid_tox21.csv',
+                'test': 'DT1/T2_tox21/test_tox21.csv'
+            },
+            'DT1-3': {
+                'train': 'DT1/T3_hiv/train_hiv.csv',
+                'valid': 'DT1/T3_hiv/valid_hiv.csv',
+                'test': 'DT1/T3_hiv/test_hiv.csv'
+            },
+            'DT1-4': {
+                'train': 'DT1/T4_sider/train_sider.csv',
+                'valid': 'DT1/T4_sider/valid_sider.csv',
+                'test': 'DT1/T4_sider/test_sider.csv'
+            },
+            'DT1-5': {
+                'train': 'DT1/T5_bbbp/train_bbbp.csv',
+                'valid': 'DT1/T5_bbbp/valid_bbbp.csv',
+                'test': 'DT1/T5_bbbp/test_bbbp.csv'
+            },
+            'DT1-6': {
+                'train': 'DT1/T6_toxcast/train_toxcast.csv',
+                'valid': 'DT1/T6_toxcast/valid_toxcast.csv',
+                'test': 'DT1/T6_toxcast/test_toxcast.csv'
+            },
+            'DT1-7': {
+                'train': 'DT1/T7_muv/train_muv.csv',
+                'valid': 'DT1/T7_muv/valid_muv.csv',
+                'test': 'DT1/T7_muv/test_muv.csv'
+            },
+            'DT1-8': {
+                'train': 'DT1/T8_bace/train_bace.csv',
+                'valid': 'DT1/T8_bace/valid_bace.csv',
+                'test': 'DT1/T8_bace/test_bace.csv'
             },
         }
 
@@ -147,6 +182,8 @@ class Config:
         return {
             'pre_train_batch_size': self.pre_train_batch_size,
             'pre_train_epochs': self.pre_train_epochs,
+            'train_batch_size': self.train_batch_size,
+            'train_epochs': self.train_epochs,
             'model_save_steps': self.model_save_steps,
             'pre_train_corpus_file_path': self.pre_train_corpus_file_path,
             'bert_name': self.bert_name,
