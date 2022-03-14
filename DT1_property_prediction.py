@@ -7,7 +7,7 @@ from config import Config
 from utils.models import DT1Model
 from utils.validators import DT1Validator
 from utils.data_handler import DT1Up, DT1Dataset
-from utils.functions import load_model_and_parallel, build_optimizer_and_scheduler, save_model
+from utils.functions import load_model_and_parallel, build_optimizer_and_scheduler, save_model, set_seed
 
 import torch
 from loguru import logger
@@ -179,6 +179,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpu_nums', dest='gpu_nums', default='0', type=int)
 
     args = parser.parse_args()
+    set_seed(seed=123)
 
     config = Config(
         task_type=args.task_type,

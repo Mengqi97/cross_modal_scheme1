@@ -2,12 +2,14 @@ import os
 import sys
 import collections
 import codecs
+import random
 from typing import List, Optional
 
 from config import Config
 
 import torch
 import torch.distributed as dist
+import numpy as np
 from torch.nn.parallel import DistributedDataParallel as DDP
 from SmilesPE.tokenizer import SPE_Tokenizer
 from transformers import PreTrainedTokenizer
@@ -448,3 +450,15 @@ def flat_list_rec(the_list, res=None):
         else:
             res.append(item)
     return res
+
+def set_seed(seed):
+    """
+    设置随机种子
+    :param seed:
+    :return:
+    """
+    random.seed(seed)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    torch.cuda.manual_seed_all(seed)
+

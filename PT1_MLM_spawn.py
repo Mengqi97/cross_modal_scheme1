@@ -9,7 +9,7 @@ from torch.cuda.memory import empty_cache
 
 from config import Config
 from utils.data_handler import MLMUp, MLMDataset
-from utils.functions import load_model_and_parallel_ddp, build_optimizer_and_scheduler, save_model_ddp, setup, cleanup
+from utils.functions import load_model_and_parallel_ddp, build_optimizer_and_scheduler, save_model_ddp, setup, cleanup, set_seed
 
 import torch
 from loguru import logger
@@ -257,6 +257,8 @@ if __name__ == '__main__':
     # logger.info(args.mode)
     # logger.info(args.scale)
     logger.info('Information: {}'.format(args.information if args.information else 'None'))
+
+    set_seed(seed=123)
 
     config = Config(
         task_type=args.task_type,
