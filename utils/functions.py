@@ -406,7 +406,7 @@ def load_model_and_parallel_ddp(model, rank, ckpt_path=None, strict=True):
     return ddp_model
 
 
-def save_model_ddp(_config: Config, model, global_step=-1):
+def save_model_ddp(_config: Config, model, global_step=-1, model_name=''):
     """
     保存模型
     :param _config: 参数
@@ -420,7 +420,10 @@ def save_model_ddp(_config: Config, model, global_step=-1):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
-    save_model_path = os.path.join(output_dir, 'model_ddp.pt')
+    if model_name:
+        save_model_path = os.path.join(output_dir, model_name+'.pt')
+    else:
+        save_model_path = os.path.join(output_dir, 'model_ddp.pt')
     model = (
         model.module if hasattr(model, 'module') else model
     )
