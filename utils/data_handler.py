@@ -72,6 +72,7 @@ class MLMUp(BaseUp):
         self.mlm_replace_random_prob = _config.mlm_replace_random_prob
         self.drug_name_replace_prob = _config.drug_name_replace_prob
         self.smi_token_id = _config.smi_token_id
+        self.tokenizer_smi_type = _config.tokenizer_smi_type
         if 'convert_data' == _config.mode:
             self.save_converted_dataset_path = os.path.join(
                 base_dir,
@@ -291,7 +292,7 @@ class MLMUp(BaseUp):
             os.makedirs(save_path)
         tokenized_data.to_csv(os.path.join(
             save_path,
-            f'tokenized_data_only_single_{self.scale}_{self.drug_name_replace_prob}.csv',
+            f'tokenized_data_only_single_{self.tokenizer_smi_type}_{self.drug_name_replace_prob}.csv',
         ), index=False)
 
 
