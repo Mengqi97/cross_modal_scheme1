@@ -28,7 +28,7 @@ class Config:
             self.train_epochs = 10
             self.show_results_times = 2
 
-            self.pre_train_corpus_file_path = 'pre_train/pre_train_corpus_small.csv'
+            self.pre_train_corpus_file_path = 'pre_train/pretrain_corpus_n.csv'
 
         elif 'gpu_mini' == self.scale:
             self.gpu_ids = '0'
@@ -141,7 +141,7 @@ class Config:
 
         # 类型选择
         self.tokenizer_txt_type = 'default'
-        self.tokenizer_smi_type = 'pubmedBERT'
+        self.tokenizer_smi_type = 'default'
         self.bert_name = 'microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract'
         self.task_type = task_type.upper()
         self.mode = mode.lower()
