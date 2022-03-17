@@ -229,22 +229,6 @@ class MLMUp(BaseUp):
         else:
             return converted_dataset
 
-    # @staticmethod
-    # def item_tokenize(series: pd.Series):
-    #     global tokenizer_smi
-    #     global tokenizer_txt
-    #     global drug_name_replace_prob
-    #     drug_name = series['DRUG_NAME'].lower()
-    #     abstract = series['ABSTRACTS'].lower()
-    #     smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
-    #
-    #     # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
-    #     if random.random() < drug_name_replace_prob:
-    #         abstract = abstract.replace(drug_name, '[SMI]')
-    #     abstract_tokenized = tokenizer_txt.encode(abstract, add_special_tokens=False)
-    #
-    #     return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
-
     @staticmethod
     def item_tokenize(series: pd.Series):
         global tokenizer_smi
@@ -252,23 +236,51 @@ class MLMUp(BaseUp):
         global drug_name_replace_prob
         drug_name = series['DRUG_NAME'].lower()
         abstract = series['ABSTRACTS'].lower()
+
+        if 'Synonym' in series.keys().tolist():
+            for ele in eval(series['Synonym']):
+                name_lower = ele.lower()
+                if abstract.find(name_lower) != -1:
+                    drug_name = name_lower
+                    print('yes')
+                    break
         if abstract.find(drug_name) == -1:
             return '', ''
-        abstract_sentence_list = tokenizer_sen.tokenize(series['ABSTRACTS'])
+
         smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
 
-        abstract_sentence_filter_list = [sentence.lower() for sentence in abstract_sentence_list if
-                                         sentence.lower().find(drug_name) != -1]
-        abstract_list = []
         # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
-        for sentence in abstract_sentence_filter_list:
-            if random.random() < drug_name_replace_prob:
-                abstract_list.append(sentence.replace(drug_name, '[SMI]'))
-            else:
-                abstract_list.append(sentence)
-        abstract_tokenized = tokenizer_txt.encode(' '.join(abstract_list), add_special_tokens=False)
+        if random.random() < drug_name_replace_prob:
+            abstract = abstract.replace(drug_name, '[SMI]')
+        abstract_tokenized = tokenizer_txt.encode(abstract, add_special_tokens=False)
 
         return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
+
+    # @staticmethod
+    # def item_tokenize(series: pd.Series):
+    #     global tokenizer_smi
+    #     global tokenizer_txt
+    #     global drug_name_replace_prob
+    #     drug_name = series['DRUG_NAME'].lower()
+    #     abstract = series['ABSTRACTS'].lower()
+    #
+    #     if abstract.find(drug_name) == -1:
+    #         return '', ''
+    #     abstract_sentence_list = tokenizer_sen.tokenize(series['ABSTRACTS'])
+    #     smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
+    #
+    #     abstract_sentence_filter_list = [sentence.lower() for sentence in abstract_sentence_list if
+    #                                      sentence.lower().find(drug_name) != -1]
+    #     abstract_list = []
+    #     # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
+    #     for sentence in abstract_sentence_filter_list:
+    #         if random.random() < drug_name_replace_prob:
+    #             abstract_list.append(sentence.replace(drug_name, '[SMI]'))
+    #         else:
+    #             abstract_list.append(sentence)
+    #     abstract_tokenized = tokenizer_txt.encode(' '.join(abstract_list), add_special_tokens=False)
+    #
+    #     return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
 
     def tokenize_data(self):
         tokenized_data = pd.DataFrame()
