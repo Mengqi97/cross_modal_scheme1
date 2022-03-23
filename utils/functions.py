@@ -421,6 +421,7 @@ def save_model_ddp(_config: Config, model, global_step=-1, model_name=''):
         os.makedirs(output_dir, exist_ok=True)
 
     if model_name:
+        model_name = model_name + '-' + str(global_step) + 'e'
         save_model_path = os.path.join(output_dir, model_name+'.pt')
     else:
         save_model_path = os.path.join(output_dir, 'model_ddp.pt')

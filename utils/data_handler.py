@@ -306,6 +306,10 @@ class MLMUp(BaseUp):
             save_path,
             f'tokenized_data_only_single_{self.tokenizer_smi_type}_{self.drug_name_replace_prob}.csv',
         ), index=False)
+        # tokenized_data.to_csv(os.path.join(
+        #     save_path,
+        #     f'new_data_{self.tokenizer_smi_type}_{self.drug_name_replace_prob}.csv',
+        # ), index=False)
 
 
 class DT1Up(BaseUp):
