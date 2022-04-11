@@ -239,6 +239,7 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--accum_steps', dest='accum_steps', default=0, type=int)
     parser.add_argument('-i', '--information', dest='information', default='', type=str)
     parser.add_argument('-n', '--model_name', dest='model_name', default='', type=str)
+    parser.add_argument('-e', '--epoch', dest='epoch', default=4, type=int)
     parser.add_argument('--pre_train_corpus_file_path', default='', type=str)
     parser.add_argument('--num_workers', dest='num_workers', default=1, type=int)
     parser.add_argument('--word_size', dest='word_size', default=1, type=int)
@@ -273,6 +274,7 @@ if __name__ == '__main__':
 
     if args.pre_train_corpus_file_path:
         config.pre_train_corpus_file_path = args.pre_train_corpus_file_path
+        config.pre_train_epochs = args.epoch
 
     logger.info(os.system("nvidia-smi"))
     # logger.info(torch.cuda.device_count())
