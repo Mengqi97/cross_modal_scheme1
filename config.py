@@ -59,7 +59,7 @@ class Config:
 
             self.pin_memory = True
             self.accum_steps = accum_steps
-            self.pre_train_batch_size = 256 // accum_steps
+            self.pre_train_batch_size = 512 // accum_steps
             self.pre_train_epochs = 4
             self.train_batch_size = 16
             self.train_epochs = 40
