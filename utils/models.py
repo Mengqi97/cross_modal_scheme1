@@ -396,9 +396,11 @@ class CrossBertForMaskedLM(BertPreTrainedModel, ABC):
     _keys_to_ignore_on_load_unexpected = [r"pooler"]
     _keys_to_ignore_on_load_missing = [r"position_ids", r"predictions.decoder.bias"]
 
-    def __init__(self, config, txt_encoder, smi_encoder):
+    def __init__(self, config, txt_encoder, smi_encoder, txt_id, smi_id):
         super().__init__(config)
 
+        self.txt_id = txt_id
+        self.smi_id = smi_id
         # self.txt_encoder = BertModel(config, add_pooling_layer=False)
         # self.smi_encoder = BertModel(config, add_pooling_layer=False)
         self.cross_encoder = BertCrossEncoder(config)
@@ -454,6 +456,12 @@ class CrossBertForMaskedLM(BertPreTrainedModel, ABC):
         """
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        input_ids_txt = input_ids_txt if \
+            input_ids_txt is not None else \
+            torch.tensor([[self.txt_id] * input_ids_smi.shape[0]]).to(input_ids_smi.dtype).to(input_ids_smi.device)
+        input_ids_smi = input_ids_smi if \
+            input_ids_smi is not None else \
+            torch.tensor([[self.smi_id] * input_ids_txt.shape[0]]).to(input_ids_txt.dtype).to(input_ids_txt.device)
 
         outputs_txt = self.txt_encoder(
             input_ids_txt,
