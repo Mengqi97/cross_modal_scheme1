@@ -9,7 +9,7 @@ from torch.cuda.memory import empty_cache
 
 from config import Config
 from utils.data_handler import MLMUp, MLMDataset
-from utils.functions import load_model_and_parallel_ddp, build_optimizer_and_scheduler, save_model_ddp, setup, cleanup
+from utils.functions import load_model_and_parallel_ddp, build_optimizer_and_scheduler, save_model_ddp, setup, cleanup, set_seed
 
 import torch
 from loguru import logger
@@ -29,7 +29,7 @@ str_time = time.strftime('[%Y-%m-%d]%H-%M')
 # logger.add(os.path.join(base_dir, 'log', f'{str_time}.log'), encoding='utf-8')
 
 
-def train(rank, word_size, _config: Config):
+def train(rank, word_size, _config: Config, args):
     if torch.cuda.is_available() is False:
         raise EnvironmentError("not find GPU device for training.")
     logger.info(f"---- Running basic DDP example on rank {rank}. ----")
@@ -152,9 +152,7 @@ def train(rank, word_size, _config: Config):
                 predict_txt_list += predicts[masked_token_mask & (~smi_token_mask)].cpu().tolist()
                 label_list += labels[masked_token_mask].cpu().tolist()
                 label_smi_list += labels[masked_token_mask & smi_token_mask].cpu().tolist()
-                logger.info(label_smi_list)
                 label_txt_list += labels[masked_token_mask & (~smi_token_mask)].cpu().tolist()
-                logger.info(label_txt_list)
 
             loss.backward()
 
@@ -202,12 +200,12 @@ def train(rank, word_size, _config: Config):
                 #         save_model_ddp(_config, model, global_step=int(global_step*ratio))
                 #     dist.barrier()
 
-        if (epoch+1) % 1 == 0:
+        if (epoch+1) == _config.pre_train_epochs:
             if rank == 0:
                 time_end = time.time()
                 logger.info('训练步数： {:>10} ---------- 训练时长：{:>20.15f}'.format(int(global_step*ratio), time_end-time_start))
                 logger.info('**********6-1 模型保存**********')
-                save_model_ddp(_config, model, global_step=epoch+1)
+                save_model_ddp(_config, model, global_step=epoch+1, model_name=args.model_name)
             dist.barrier()
         
         if (epoch+1) % 1 == 0:
@@ -240,6 +238,9 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--use_pre_converted_data', dest='use_pre_converted_data', default=0, type=int)
     parser.add_argument('-a', '--accum_steps', dest='accum_steps', default=0, type=int)
     parser.add_argument('-i', '--information', dest='information', default='', type=str)
+    parser.add_argument('-n', '--model_name', dest='model_name', default='', type=str)
+    parser.add_argument('-e', '--epoch', dest='epoch', default=4, type=int)
+    parser.add_argument('--pre_train_corpus_file_path', default='', type=str)
     parser.add_argument('--num_workers', dest='num_workers', default=1, type=int)
     parser.add_argument('--word_size', dest='word_size', default=1, type=int)
     parser.add_argument('--dist_url', dest='dist_url', default='env://', type=str)
@@ -258,6 +259,8 @@ if __name__ == '__main__':
     # logger.info(args.scale)
     logger.info('Information: {}'.format(args.information if args.information else 'None'))
 
+    set_seed(seed=123)
+
     config = Config(
         task_type=args.task_type,
         mode=args.mode,
@@ -269,12 +272,16 @@ if __name__ == '__main__':
         accum_steps=args.accum_steps,
     )
 
+    if args.pre_train_corpus_file_path:
+        config.pre_train_corpus_file_path = args.pre_train_corpus_file_path
+        config.pre_train_epochs = args.epoch
+
     logger.info(os.system("nvidia-smi"))
     # logger.info(torch.cuda.device_count())
     # logger.info(torch.cuda.current_device())
 
     mp.spawn(train,
-             args=(args.word_size, config),
+             args=(args.word_size, config, args),
              nprocs=args.word_size,
              join=True)
     logger.info('**********结束训练**********')

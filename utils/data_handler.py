@@ -53,6 +53,8 @@ class BaseUp:
             self.tokenizer_smi = SMILES_SPE_Tokenizer(
                 vocab_file=os.path.join(base_dir, _config.data_dir, _config.spe_voc_file),
                 spe_file=os.path.join(base_dir, _config.data_dir, _config.spe_file))
+        elif 'pubmedBERT' == _config.tokenizer_smi_type:
+            self.tokenizer_smi = self.tokenizer_txt
 
 
 class MLMUp(BaseUp):
@@ -70,6 +72,7 @@ class MLMUp(BaseUp):
         self.mlm_replace_random_prob = _config.mlm_replace_random_prob
         self.drug_name_replace_prob = _config.drug_name_replace_prob
         self.smi_token_id = _config.smi_token_id
+        self.tokenizer_smi_type = _config.tokenizer_smi_type
         if 'convert_data' == _config.mode:
             self.save_converted_dataset_path = os.path.join(
                 base_dir,
@@ -233,38 +236,61 @@ class MLMUp(BaseUp):
     #     global drug_name_replace_prob
     #     drug_name = series['DRUG_NAME'].lower()
     #     abstract = series['ABSTRACTS'].lower()
+
+    #     if 'Synonym' in series.keys().tolist():
+    #         for ele in eval(series['Synonym']).insert(0, drug_name):
+    #             name_lower = ele.lower()
+    #             if abstract.find(name_lower) != -1:
+    #                 drug_name = name_lower
+    #                 break
+    #     if abstract.find(drug_name) == -1:
+    #         return '', ''
+
     #     smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
-    #
+
     #     # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
     #     if random.random() < drug_name_replace_prob:
     #         abstract = abstract.replace(drug_name, '[SMI]')
     #     abstract_tokenized = tokenizer_txt.encode(abstract, add_special_tokens=False)
-    #
+
     #     return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
 
     @staticmethod
     def item_tokenize(series: pd.Series):
+        # 声明全局变量
         global tokenizer_smi
         global tokenizer_txt
+        global tokenizer_sen
         global drug_name_replace_prob
         drug_name = series['DRUG_NAME'].lower()
         abstract = series['ABSTRACTS'].lower()
+    
+        # 剔除不含药物名称的摘要
         if abstract.find(drug_name) == -1:
             return '', ''
+        
+        # 分句
         abstract_sentence_list = tokenizer_sen.tokenize(series['ABSTRACTS'])
         smi_tokenized = tokenizer_smi.encode(series['C_SMILES'], add_special_tokens=False)
-
+    
         abstract_sentence_filter_list = [sentence.lower() for sentence in abstract_sentence_list if
                                          sentence.lower().find(drug_name) != -1]
         abstract_list = []
         # 将药物名称概率的替换为'[SMI]'，以便下一步替换为分子式。
         for sentence in abstract_sentence_filter_list:
             if random.random() < drug_name_replace_prob:
-                abstract_list.append(sentence.replace(drug_name, '[SMI]'))
+                # 名称替换
+                # abstract_list.append(sentence.replace(drug_name, '[SMI]'))
+                # 拼接
+                # abstract_list.append(sentence + ' [SMI]')
+                # 随机插入
+                char_list = list(sentence)
+                random_index = random.randint(0, len(char_list))
+                abstract_list.append(''.join(char_list[:random_index] + list(' [SMI] ') + char_list[random_index:]))
             else:
                 abstract_list.append(sentence)
         abstract_tokenized = tokenizer_txt.encode(' '.join(abstract_list), add_special_tokens=False)
-
+    
         return json.dumps(smi_tokenized), json.dumps(abstract_tokenized)
 
     def tokenize_data(self):
@@ -289,11 +315,15 @@ class MLMUp(BaseUp):
             os.makedirs(save_path)
         tokenized_data.to_csv(os.path.join(
             save_path,
-            f'tokenized_data_only_single_{self.scale}_{self.drug_name_replace_prob}.csv',
+            f'tokenized_data_only_single_{self.tokenizer_smi_type}_{self.drug_name_replace_prob}_random.csv',
         ), index=False)
+        # tokenized_data.to_csv(os.path.join(
+        #     save_path,
+        #     f'new_data_{self.tokenizer_smi_type}_{self.drug_name_replace_prob}.csv',
+        # ), index=False)
 
 
-class ClintoxUp(BaseUp):
+class DT1Up(BaseUp):
     """
 
     Args:
@@ -308,17 +338,17 @@ class ClintoxUp(BaseUp):
     def __init__(self,
                  data_path,
                  _config):
-        super(ClintoxUp, self).__init__(
+        super(DT1Up, self).__init__(
             data_path=data_path,
             _config=_config,
         )
 
     @staticmethod
     def convert_data(series: pd.Series, self):
-        inputs = self.tokenizer_smi(series['ids'], padding='max_length', truncation=True, max_length=self.max_seq_len,
+        inputs = self.tokenizer_smi(series['smiles'], padding='max_length', truncation=True, max_length=self.max_seq_len,
                                     return_attention_mask=True, return_token_type_ids=True)
         if 'train' == self.mode:
-            labels = int(series['y1'])
+            labels = list(series[2:])
         else:
             labels = -1
 
@@ -378,12 +408,12 @@ class MLMDataset(BaseDataset):
         return data
 
 
-class ClintoxDataset(BaseDataset):
+class DT1Dataset(BaseDataset):
     def __init__(self,
                  dataset,
                  _config,
                  additional_info=None):
-        super(ClintoxDataset, self).__init__(
+        super(DT1Dataset, self).__init__(
             dataset,
             _config.mode,
         )
@@ -410,8 +440,8 @@ if __name__ == '__main__':
 
     # 测试ClintoxUp函数
     config = Config('DT_1', 'train')
-    data_up = ClintoxUp(os.path.join(base_dir, config.data_dir, config.downstream_tasks_corpus_file['DT_1']['test']),
-                        config)
+    data_up = DT1Up(os.path.join(base_dir, config.data_dir, config.downstream_tasks_corpus_file['DT_1']['test']),
+                    config)
     dataset = data_up.convert_dataset()
     ic(dataset['input_ids'].shape)
     ic(dataset['labels'].shape)
